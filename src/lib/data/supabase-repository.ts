@@ -17,6 +17,11 @@ import {
   defaultQuestions,
 } from "@/lib/content/default-bank";
 import {
+  formatAdminActivityUpdateMessage,
+  formatSurveyAnswerEventMessage,
+  formatSurveyMomentumEventMessage,
+} from "@/lib/data/live-event-copy";
+import {
   assertPlayerStep,
   appendEvent,
   buildLeaderboard,
@@ -913,24 +918,11 @@ export async function supabaseSubmitAnswer(
 
   await appendSupabaseEvent(client, {
     type: "score_update",
-    message:
-      breakdown.label === "correct"
-        ? `${displayName} ${pickByParticipantType(player.participantType, {
-            solo_male: `קיבל ${breakdown.points} נק׳ על תשובה נכונה`,
-            solo_female: `קיבלה ${breakdown.points} נק׳ על תשובה נכונה`,
-            family: `קיבלו ${breakdown.points} נק׳ על תשובה נכונה`,
-          })}`
-        : breakdown.label === "wrong"
-          ? `${displayName} ${pickByParticipantType(player.participantType, {
-              solo_male: "ממשיך לצבור נקודות ולהישאר במשחק",
-              solo_female: "ממשיכה לצבור נקודות ולהישאר במשחק",
-              family: "ממשיכים לצבור נקודות ולהישאר במשחק",
-            })}`
-          : `${displayName} ${pickByParticipantType(player.participantType, {
-              solo_male: "דילג והמשיך הלאה",
-              solo_female: "דילגה והמשיכה הלאה",
-              family: "דילגו והמשיכו הלאה",
-            })}`,
+    message: formatSurveyAnswerEventMessage(
+      displayName,
+      player.participantType,
+      breakdown.label,
+    ),
     playerId: player.id,
     playerName: displayName,
   });
@@ -969,11 +961,7 @@ export async function supabaseSubmitAnswer(
   if (rankImproved) {
     await appendSupabaseEvent(client, {
       type: "rank_up",
-      message: `${displayName} ${pickByParticipantType(player.participantType, {
-        solo_male: `עלה למקום ${afterRank}`,
-        solo_female: `עלתה למקום ${afterRank}`,
-        family: `עלו למקום ${afterRank}`,
-      })}`,
+      message: formatSurveyMomentumEventMessage(displayName, player.participantType),
       playerId: player.id,
       playerName: displayName,
     });
@@ -1200,11 +1188,7 @@ export async function supabaseSubmitMission(
   if (rankImproved) {
     await appendSupabaseEvent(client, {
       type: "rank_up",
-      message: `${displayName} ${pickByParticipantType(player.participantType, {
-        solo_male: `עלה למקום ${afterRank}`,
-        solo_female: `עלתה למקום ${afterRank}`,
-        family: `עלו למקום ${afterRank}`,
-      })}`,
+      message: formatSurveyMomentumEventMessage(displayName, player.participantType),
       playerId: player.id,
       playerName: displayName,
     });
@@ -1378,7 +1362,7 @@ export async function supabaseAdjustPlayerPoints(input: AdjustPlayerPointsInput)
 
   await appendSupabaseEvent(client, {
     type: "admin_update",
-    message: `הניקוד של ${displayName} עודכן ידנית`,
+    message: formatAdminActivityUpdateMessage(displayName),
     playerId: player.id,
     playerName: displayName,
   });

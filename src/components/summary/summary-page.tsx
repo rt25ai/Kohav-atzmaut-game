@@ -1,10 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { Camera, Sparkles, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { SurveyResultsList } from "@/components/results/survey-results-list";
+import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { useSound } from "@/components/shared/sound-provider";
+import { RESULTS_CELEBRATION_OVERLAY } from "@/lib/config";
 import type { SummarySnapshot } from "@/lib/types";
 import { getStoredPlayerId } from "@/lib/utils/local-session";
 
@@ -35,14 +39,14 @@ export function SummaryPage() {
   }, [play, setGlobalSoundEnabled]);
 
   if (loading) {
-    return <div className="glass-panel min-h-[50vh] rounded-[34px]" />;
+    return <div className="stage-panel min-h-[50vh] rounded-[34px]" />;
   }
 
   if (!summary) {
     return (
-      <div className="glass-panel rounded-[34px] p-8 text-center">
-        <h1 className="font-display text-3xl text-[#0f254a]">אין עדיין סיכום להצגה</h1>
-        <p className="mt-3 text-[#5d7da3]">
+      <div className="stage-panel rounded-[34px] p-8 text-center">
+        <h1 className="font-display text-3xl text-white">אין עדיין סיכום להצגה</h1>
+        <p className="mt-3 text-[var(--text-soft)]">
           כדי להגיע לכאן צריך להתחיל ולסיים משחק.
         </p>
       </div>
@@ -51,56 +55,76 @@ export function SummaryPage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[38px] border border-white/55 bg-[linear-gradient(135deg,rgba(11,58,121,0.88),rgba(78,169,255,0.62))] px-6 py-10 text-white shadow-[0_34px_110px_rgba(9,41,87,0.18)] sm:px-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.32),transparent_22%),radial-gradient(circle_at_80%_15%,rgba(255,255,255,0.22),transparent_18%),radial-gradient(circle_at_50%_75%,rgba(255,255,255,0.28),transparent_24%)]" />
+      <section className="stage-panel relative overflow-hidden rounded-[38px] px-6 py-10 sm:px-10">
+        <Image
+          src={RESULTS_CELEBRATION_OVERLAY}
+          alt=""
+          fill
+          className="object-cover opacity-[0.3] mix-blend-screen"
+        />
         <div className="relative z-10">
-          <p className="text-sm text-white/80">כוכבניק - סקר הכי ישראלי שיש</p>
-          <h1 className="mt-2 font-display text-4xl leading-none sm:text-5xl">
+          <div className="section-kicker">
+            <Sparkles size={15} />
+            רגע ה־reveal הגדול
+          </div>
+          <h1 className="mt-4 font-display text-4xl leading-none text-white sm:text-6xl">
             כך הקהילה בחרה
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-white/90">
-            סיימת את המסלול. עכשיו אפשר לראות איך הקהילה ענתה על כל שאלה,
-            ואיפה הבחירות שלך עומדות ביחס לכולם.
+          <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--text-soft)]">
+            סיימת את המסלול. עכשיו נפתחת התמונה המלאה: איפה הקהילה הייתה כמעט
+            מאוחדת, איפה היא התחלקה, ואיפה הבחירה שלך בלטה מול כולם.
           </p>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="glass-panel rounded-[30px] p-6">
-          <p className="text-sm text-[#5c7ca2]">שאלות שהשלמת</p>
-          <p className="mt-2 font-display text-3xl text-[#0f254a]">
-            {summary.survey.questionResults.length}
+        <div className="metric-plate px-6 py-6">
+          <p className="text-sm text-[var(--text-dim)]">שאלות שהשלמת</p>
+          <p className="mt-3 font-display text-4xl text-white">
+            <AnimatedCounter value={summary.survey.questionResults.length} />
           </p>
         </div>
-        <div className="glass-panel rounded-[30px] p-6">
-          <p className="text-sm text-[#5c7ca2]">משימות צילום</p>
-          <p className="mt-2 font-display text-3xl text-[#0f254a]">
-            {summary.player.photoMissionsCompleted}
+        <div className="metric-plate px-6 py-6">
+          <p className="text-sm text-[var(--text-dim)]">משימות צילום</p>
+          <p className="mt-3 font-display text-4xl text-white">
+            <AnimatedCounter value={summary.player.photoMissionsCompleted} />
           </p>
         </div>
-        <div className="glass-panel rounded-[30px] p-6">
-          <p className="text-sm text-[#5c7ca2]">אנשים חדשים שפגשת</p>
-          <p className="mt-2 font-display text-3xl text-[#0f254a]">
-            {summary.player.newPeopleMet}
+        <div className="metric-plate px-6 py-6">
+          <p className="text-sm text-[var(--text-dim)]">אנשים חדשים שפגשת</p>
+          <p className="mt-3 font-display text-4xl text-white">
+            <AnimatedCounter value={summary.player.newPeopleMet} />
           </p>
+        </div>
+      </section>
+
+      <section className="stage-panel-soft rounded-[32px] p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-[var(--text-dim)]">מסך סיום קהילתי</p>
+            <h2 className="mt-2 font-display text-3xl text-white">
+              איפה את או אתה בתוך התמונה הגדולה?
+            </h2>
+          </div>
+          <div className="broadcast-chip">
+            <Users size={14} />
+            כל שאלה נצבעת לפי בחירת הקהילה
+          </div>
         </div>
       </section>
 
       <SurveyResultsList questionResults={summary.survey.questionResults} />
 
-      <section className="glass-panel rounded-[34px] p-6 sm:p-8">
+      <section className="stage-panel-soft rounded-[34px] p-6 sm:p-8">
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/results"
-            className="rounded-full bg-[#0f61d8] px-5 py-3 text-white"
-          >
+          <Link href="/results" className="hero-button-primary rounded-full px-5 py-3">
             לצפייה בתוצאות החיות
           </Link>
-          <Link
-            href="/gallery"
-            className="rounded-full border border-[#cfe4ff] px-5 py-3 text-[#365682]"
-          >
-            לצפייה בגלריה
+          <Link href="/gallery" className="hero-button-secondary rounded-full px-5 py-3">
+            <span className="inline-flex items-center gap-2">
+              <Camera size={16} />
+              לצפייה בגלריה
+            </span>
           </Link>
         </div>
       </section>

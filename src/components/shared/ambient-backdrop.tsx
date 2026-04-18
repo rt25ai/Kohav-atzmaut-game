@@ -3,30 +3,53 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 
-import { HERO_IMAGE } from "@/lib/config";
+import {
+  FESTIVE_GLOW_OVERLAY,
+  RESULTS_CELEBRATION_OVERLAY,
+  STAGE_HERO_IMAGE,
+} from "@/lib/config";
 
 export function AmbientBackdrop() {
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden">
       <Image
-        src={HERO_IMAGE}
+        src={STAGE_HERO_IMAGE}
         alt=""
         fill
         priority
-        className="object-cover object-center opacity-[0.14] blur-[1px] saturate-[1.08]"
+        className="object-cover object-center opacity-[0.34] saturate-[1.05]"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,21,47,0.10),rgba(255,255,255,0.08)_18%,rgba(239,249,255,0.72)_60%,rgba(248,252,255,0.92)_100%)]" />
+      <Image
+        src={FESTIVE_GLOW_OVERLAY}
+        alt=""
+        fill
+        className="object-cover object-center opacity-[0.3] mix-blend-screen"
+      />
+      <Image
+        src={RESULTS_CELEBRATION_OVERLAY}
+        alt=""
+        fill
+        className="object-cover object-center opacity-[0.08] mix-blend-screen"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.42),rgba(4,15,28,0.48)_28%,rgba(5,14,28,0.72)_68%,rgba(3,11,22,0.94)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(89,182,255,0.16),transparent_28%),radial-gradient(circle_at_20%_20%,rgba(255,219,140,0.08),transparent_18%)]" />
+
       <motion.div
-        animate={{ opacity: [0.55, 0.8, 0.55], scale: [1, 1.08, 1] }}
-        transition={{ duration: 9, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        className="absolute right-[-8rem] top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(163,215,255,0.52),rgba(163,215,255,0.04)_70%)] blur-3xl"
+        animate={{ opacity: [0.18, 0.34, 0.18], x: [0, 18, 0], y: [0, -16, 0] }}
+        transition={{ duration: 12, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        className="absolute left-[-10rem] top-24 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,rgba(102,191,255,0.46),rgba(102,191,255,0.04)_72%)] blur-3xl"
       />
       <motion.div
-        animate={{ opacity: [0.28, 0.5, 0.28], x: [0, 24, 0], y: [0, -14, 0] }}
-        transition={{ duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        className="absolute left-[-6rem] top-40 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.78),rgba(255,255,255,0.04)_70%)] blur-3xl"
+        animate={{ opacity: [0.12, 0.26, 0.12], x: [0, -24, 0], y: [0, 18, 0] }}
+        transition={{ duration: 14, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        className="absolute right-[-8rem] top-10 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(255,216,138,0.22),rgba(255,216,138,0.02)_70%)] blur-3xl"
       />
-      <div className="soft-grid absolute inset-x-0 top-0 h-[42vh] opacity-[0.18]" />
+      <motion.div
+        animate={{ opacity: [0.05, 0.12, 0.05], scale: [1, 1.08, 1] }}
+        transition={{ duration: 18, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        className="absolute inset-x-[18%] top-0 h-72 bg-[radial-gradient(circle,rgba(255,255,255,0.34),transparent_60%)] blur-3xl"
+      />
+      <div className="soft-grid absolute inset-x-0 top-0 h-[34vh] opacity-[0.2]" />
     </div>
   );
 }

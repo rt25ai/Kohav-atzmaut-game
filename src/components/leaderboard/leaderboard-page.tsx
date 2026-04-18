@@ -49,8 +49,8 @@ export function LeaderboardPage({
       <section className="glass-panel rounded-[34px] p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm text-[#5d7da3]">הקרב על הפסגה בזמן אמת</p>
-            <h1 className="font-display text-3xl text-[#0f254a]">לוח התוצאות</h1>
+            <p className="text-sm text-[#5d7da3]">תמונת ההשתתפות בזמן אמת</p>
+            <h1 className="font-display text-3xl text-[#0f254a]">השוואה לשחקנים אחרים</h1>
           </div>
           <label className="glass-panel flex h-12 w-full max-w-sm items-center gap-3 rounded-full px-4">
             <Search size={18} className="text-[#6383a9]" />

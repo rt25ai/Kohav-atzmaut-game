@@ -1,9 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { Radio, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { SurveyResultsList } from "@/components/results/survey-results-list";
+import { RESULTS_CELEBRATION_OVERLAY } from "@/lib/config";
 import type { SurveyResultsSnapshot } from "@/lib/types";
 import { getStoredPlayerId } from "@/lib/utils/local-session";
 
@@ -32,7 +35,7 @@ export function ResultsPage() {
     const playerId = getStoredPlayerId();
 
     if (!playerId) {
-      setLockedMessage("תוצאות הסקר נפתחות רק למי שסיים את המשחק.");
+      setLockedMessage("תוצאות הסקר נפתחות רק למי שסיים את המסלול.");
       setLoading(false);
       return;
     }
@@ -71,27 +74,21 @@ export function ResultsPage() {
   }, []);
 
   if (loading) {
-    return <div className="glass-panel min-h-[50vh] rounded-[34px]" />;
+    return <div className="stage-panel min-h-[50vh] rounded-[34px]" />;
   }
 
   if (!results || lockedMessage) {
     return (
-      <div className="glass-panel rounded-[34px] p-8 text-center">
-        <h1 className="font-display text-3xl text-[#0f254a]">תוצאות הסקר</h1>
-        <p className="mt-3 text-[#5d7da3]">
-          {lockedMessage ?? "צריך לסיים את המשחק כדי לראות את התוצאות."}
+      <div className="stage-panel rounded-[34px] p-8 text-center">
+        <h1 className="font-display text-3xl text-white">תוצאות הסקר</h1>
+        <p className="mt-3 text-[var(--text-soft)]">
+          {lockedMessage ?? "צריך לסיים את המשחק כדי לפתוח את התוצאות."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/play"
-            className="rounded-full bg-[#0f61d8] px-5 py-3 text-white"
-          >
+          <Link href="/play" className="hero-button-primary rounded-full px-5 py-3">
             חזרה למשחק
           </Link>
-          <Link
-            href="/"
-            className="rounded-full border border-[#cfe4ff] px-5 py-3 text-[#365682]"
-          >
+          <Link href="/" className="hero-button-secondary rounded-full px-5 py-3">
             למסך הבית
           </Link>
         </div>
@@ -101,14 +98,36 @@ export function ResultsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="glass-panel rounded-[34px] p-6 sm:p-8">
-        <p className="text-sm text-[#5d7da3]">כוכבניק - סקר הכי ישראלי שיש</p>
-        <h1 className="mt-2 font-display text-4xl text-[#0f254a]">
-          תוצאות הסקר החיות
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[#5d7da3]">
-          כאן רואים בכל רגע איך הקהילה בחרה, ואיפה הבחירה שלך עומדת ביחס לכולם.
-        </p>
+      <section className="stage-panel relative overflow-hidden rounded-[36px] px-6 py-8 sm:px-8">
+        <Image
+          src={RESULTS_CELEBRATION_OVERLAY}
+          alt=""
+          fill
+          className="object-cover opacity-[0.24] mix-blend-screen"
+        />
+        <div className="relative z-10">
+          <div className="section-kicker">
+            <Radio size={15} />
+            לוח השידור החי של הקהילה
+          </div>
+          <h1 className="mt-4 font-display text-4xl text-white sm:text-5xl">
+            תוצאות הסקר החיות
+          </h1>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--text-soft)]">
+            כאן רואים בכל רגע איך הקהילה בוחרת, מי מוביל בכל שאלה, ואיך הבחירות שלך
+            משתלבות בתוך התמונה הגדולה של הערב.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <div className="broadcast-chip">
+              <Sparkles size={14} />
+              מתעדכן אוטומטית כל כמה שניות
+            </div>
+            <div className="broadcast-chip">
+              הבחירה שלך נשארת מסומנת בכל שאלה
+            </div>
+          </div>
+        </div>
       </section>
 
       <SurveyResultsList questionResults={results.questionResults} />

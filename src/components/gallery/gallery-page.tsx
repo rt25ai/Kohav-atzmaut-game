@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Images } from "lucide-react";
+import { Camera, Images, Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Lightbox, type LightboxItem } from "@/components/shared/lightbox";
@@ -39,13 +39,23 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
 
   return (
     <div className="space-y-6">
-      <section className="glass-panel rounded-[34px] p-6 sm:p-8">
+      <section className="stage-panel rounded-[36px] p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-[#5c7ca2]">הגלריה החיה של הערב</p>
-            <h1 className="font-display text-3xl text-[#0f254a]">רגעים מהקהילה</h1>
+            <div className="section-kicker">
+              <Camera size={14} />
+              קיר הרגעים החי של הערב
+            </div>
+            <h1 className="mt-4 font-display text-4xl text-white">
+              רגעים מהקהילה
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--text-soft)]">
+              כל משימת צילום הופכת כאן לחלון קטן של ערב העצמאות בכוכב מיכאל.
+              התמונות עולות מהשטח ונשמרות כמו קיר אירוע חי.
+            </p>
           </div>
-          <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-sm text-[#0f61d8]">
+          <div className="broadcast-chip">
+            <Radio size={14} />
             {data.photos.length} תמונות באוויר
           </div>
         </div>
@@ -58,39 +68,43 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
             type="button"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.02, duration: 0.35 }}
+            transition={{ delay: index * 0.03, duration: 0.35 }}
             onClick={() => {
               play("photo");
               setSelectedPlayerId(group.playerId);
               setSelectedIndex(0);
             }}
-            className="glass-panel overflow-hidden rounded-[24px] text-right"
+            className="stage-panel group overflow-hidden rounded-[28px] text-right"
           >
-            <div className="relative aspect-square overflow-hidden">
+            <div className="relative aspect-[1.03] overflow-hidden">
               <Image
                 src={group.cover.thumbnailUrl || group.cover.photoUrl}
                 alt={group.cover.missionTitle}
                 fill
-                className="object-cover"
-                sizes="(max-width: 768px) 50vw, 25vw"
+                className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 100vw, 33vw"
                 loading="lazy"
               />
-              <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(8,30,60,0.82))] px-3 pb-3 pt-8 text-white">
-                <p className="font-medium">{group.playerName}</p>
-                <p className="text-xs text-white/78">
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(2,10,18,0.92))]" />
+              <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pt-10">
+                <p className="font-display text-2xl text-white">{group.playerName}</p>
+                <p className="mt-1 text-sm text-[var(--text-soft)]">
                   {group.photos.length} תמונות • עודכן {formatRelativeTime(group.latestCreatedAt)}
                 </p>
               </div>
             </div>
-            <div className="space-y-2 p-3">
+
+            <div className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="rounded-full bg-[#edf6ff] px-3 py-1 text-xs text-[#0f61d8]">
+                <span className="rounded-full bg-white/8 px-3 py-1 text-xs text-[var(--text-soft)]">
                   {group.cover.missionTitle}
                 </span>
-                <span className="text-xs text-[#6b89ad]">לחצו לכל האלבום</span>
+                <span className="text-xs text-[var(--text-dim)]">לחצו לאלבום המלא</span>
               </div>
               {group.cover.caption ? (
-                <p className="line-clamp-2 text-sm text-[#59779e]">{group.cover.caption}</p>
+                <p className="line-clamp-2 text-sm leading-6 text-[var(--text-soft)]">
+                  {group.cover.caption}
+                </p>
               ) : null}
             </div>
           </motion.button>
@@ -98,9 +112,11 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
       </section>
 
       {groups.length === 0 ? (
-        <div className="glass-panel rounded-[30px] p-10 text-center">
-          <Images className="mx-auto text-[#0f61d8]" size={32} />
-          <p className="mt-3 text-[#547198]">עוד מעט התמונות הראשונות יגיעו לכאן.</p>
+        <div className="stage-panel rounded-[30px] p-10 text-center">
+          <Images className="mx-auto text-[#80d4ff]" size={32} />
+          <p className="mt-3 text-[var(--text-soft)]">
+            עוד מעט התמונות הראשונות יגיעו לכאן.
+          </p>
         </div>
       ) : null}
 

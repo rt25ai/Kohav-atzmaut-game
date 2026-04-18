@@ -2,11 +2,19 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowLeft, Camera, LoaderCircle, SkipForward, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  LoaderCircle,
+  SkipForward,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useSound } from "@/components/shared/sound-provider";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import {
   getMissionProgress,
@@ -24,7 +32,6 @@ import {
   setPendingUploads,
   type PendingUpload,
 } from "@/lib/utils/local-session";
-import { useSound } from "@/components/shared/sound-provider";
 
 async function fetchSession(playerId: string) {
   const response = await fetch(`/api/game/session?playerId=${playerId}`, {
@@ -80,10 +87,10 @@ function getAnswerVisualMeta({
     return {
       badgeText: "נשמר",
       buttonClassName:
-        "border-[#0f61d8] bg-[#eaf4ff] text-[#0f254a] shadow-[0_18px_36px_rgba(15,97,216,0.16)]",
-      badgeClassName: "bg-[#0f61d8] text-white",
-      helperText: "",
-      helperClassName: "text-[#0f61d8]",
+        "border-[#9fe1ff]/60 bg-[linear-gradient(180deg,rgba(20,82,132,0.62),rgba(7,37,62,0.78))] text-white shadow-[0_24px_50px_rgba(74,176,255,0.22)]",
+      badgeClassName: "bg-[#7ad7ff] text-[#041223]",
+      helperText: "הבחירה נקלטה ועולה למסך הסיום.",
+      helperClassName: "text-[#d7f4ff]",
     };
   }
 
@@ -91,20 +98,20 @@ function getAnswerVisualMeta({
     return {
       badgeText: "נבחרה",
       buttonClassName:
-        "border-[#0f61d8] bg-[#eaf4ff] text-[#0f254a] shadow-[0_18px_36px_rgba(15,97,216,0.16)]",
-      badgeClassName: "bg-[#0f61d8] text-white",
-      helperText: "זו הבחירה שלך",
-      helperClassName: "text-[#0f61d8]",
+        "border-[#7ad7ff]/46 bg-[linear-gradient(180deg,rgba(16,68,110,0.56),rgba(7,28,48,0.72))] text-white shadow-[0_18px_40px_rgba(74,176,255,0.16)]",
+      badgeClassName: "bg-[#7ad7ff] text-[#041223]",
+      helperText: "זו הבחירה שלך כרגע",
+      helperClassName: "text-[#d7f4ff]",
     };
   }
 
   return {
     badgeText: OPTION_LETTERS[optionId],
     buttonClassName:
-      "border-white/65 bg-white/80 text-[#123460] hover:-translate-y-0.5 hover:border-[#b7d4ff] hover:bg-white",
-    badgeClassName: "bg-[#edf6ff] text-[#0f61d8]",
+      "border-white/10 bg-white/5 text-white hover:-translate-y-0.5 hover:border-[#84d6ff]/30 hover:bg-white/8",
+    badgeClassName: "bg-white/10 text-[#a9deff]",
     helperText: "",
-    helperClassName: "text-[#5d7aa4]",
+    helperClassName: "text-[var(--text-soft)]",
   };
 }
 
@@ -475,25 +482,22 @@ export function PlayExperience() {
 
   if (loading) {
     return (
-      <div className="glass-panel flex min-h-[60vh] items-center justify-center rounded-[34px]">
-        <LoaderCircle className="animate-spin text-[#0f61d8]" size={30} />
+      <div className="stage-panel flex min-h-[60vh] items-center justify-center rounded-[34px]">
+        <LoaderCircle className="animate-spin text-[#7ad7ff]" size={30} />
       </div>
     );
   }
 
   if (!playerId || !session) {
     return (
-      <div className="glass-panel rounded-[34px] p-8 text-center">
-        <h1 className="font-display text-3xl text-[#0f254a]">
+      <div className="stage-panel rounded-[34px] p-8 text-center">
+        <h1 className="font-display text-3xl text-white">
           אין כרגע משחק פעיל במכשיר הזה
         </h1>
-        <p className="mt-3 text-[#547198]">
+        <p className="mt-3 text-[var(--text-soft)]">
           חזרו למסך הבית כדי לפתוח משחק חדש.
         </p>
-        <Link
-          href="/"
-          className="mt-6 inline-flex rounded-full bg-[#0f61d8] px-5 py-3 text-white"
-        >
+        <Link href="/" className="hero-button-primary mt-6 inline-flex rounded-full px-5 py-3">
           חזרה למסך הבית
         </Link>
       </div>
@@ -502,31 +506,32 @@ export function PlayExperience() {
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel rounded-[28px] p-4 sm:p-5">
+      <div className="stage-panel rounded-[30px] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-[#4a678f]">
+            <div className="section-kicker">
+              <Sparkles size={14} />
               שלב {session.player.currentStepIndex + 1} מתוך {session.steps.length}
-            </p>
-            <h1 className="font-display text-2xl text-[#0f254a]">
+            </div>
+            <h1 className="mt-4 font-display text-3xl text-white">
               {displayName}, {voice.readyLine}
             </h1>
           </div>
 
           <div className="flex flex-wrap gap-2 text-sm">
-            <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-[#355682]">
+            <div className="broadcast-chip">
               {questionProgress.current} מתוך {questionProgress.total} שאלות
             </div>
-            <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-[#355682]">
+            <div className="broadcast-chip">
               {session.player.photoMissionsCompleted} משימות צילום הושלמו
             </div>
           </div>
         </div>
 
-        <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/70">
+        <div className="mt-5 result-track h-3.5">
           <motion.div
             animate={{ width: `${progressValue}%` }}
-            className="h-full rounded-full bg-[linear-gradient(90deg,#0f61d8,#7cc4ff)]"
+            className="result-fill h-full rounded-full"
           />
         </div>
       </div>
@@ -534,7 +539,7 @@ export function PlayExperience() {
       {error ? (
         <div
           aria-live="polite"
-          className="rounded-[22px] bg-[#fff3f3] px-4 py-3 text-sm text-[#8c3434]"
+          className="rounded-[22px] border border-[#ffb6b6]/30 bg-[#3d1520] px-4 py-3 text-sm text-[#ffd9d9]"
         >
           {error}
         </div>
@@ -543,24 +548,32 @@ export function PlayExperience() {
       {queueMessage ? (
         <div
           aria-live="polite"
-          className="rounded-[22px] bg-[#eef8ff] px-4 py-3 text-sm text-[#0f4d97]"
+          className="rounded-[22px] border border-[#9fe1ff]/24 bg-[#09233f] px-4 py-3 text-sm text-[#d3efff]"
         >
           {queueMessage}
         </div>
       ) : null}
 
       {currentQuestion ? (
-        <section className="glass-panel rounded-[34px] p-5 sm:p-8">
-          <div className="mb-6">
-            <p className="text-sm text-[#6888ae]">
-              שאלה {questionProgress.current} מתוך {questionProgress.total}
-            </p>
-            <h2 className="font-display text-3xl text-[#0f254a]">
-              שאלה {questionProgress.current}
-            </h2>
+        <motion.section
+          key={currentStepKey}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="stage-panel rounded-[36px] p-5 sm:p-8"
+        >
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-[var(--text-dim)]">
+                שאלה {questionProgress.current} מתוך {questionProgress.total}
+              </p>
+              <h2 className="mt-2 font-display text-3xl text-white sm:text-4xl">
+                בחירת הקהל
+              </h2>
+            </div>
+            <div className="broadcast-chip">הבחירה שלך תיחשף בסיום</div>
           </div>
 
-          <p className="max-w-3xl text-2xl leading-relaxed text-[#153a6b]">
+          <p className="max-w-4xl text-2xl leading-relaxed text-white sm:text-[2rem]">
             {currentQuestion.prompt}
           </p>
 
@@ -579,22 +592,18 @@ export function PlayExperience() {
                   onClick={() => answerQuestion(option.id)}
                   disabled={busy || awaitingContinue}
                   aria-pressed={selectedOptionId === option.id}
-                  className={`flex w-full items-start justify-between gap-4 rounded-[26px] border px-5 py-5 text-right transition ${visualMeta.buttonClassName}`}
+                  className={`flex w-full items-start justify-between gap-4 rounded-[28px] border px-5 py-5 text-right transition ${visualMeta.buttonClassName}`}
                 >
-                  <div className="space-y-2">
-                    <span className="block text-lg leading-relaxed">
-                      {option.label}
-                    </span>
+                  <div className="space-y-2 text-right">
+                    <span className="block text-lg leading-relaxed">{option.label}</span>
                     {visualMeta.helperText ? (
-                      <span
-                        className={`block text-sm ${visualMeta.helperClassName}`}
-                      >
+                      <span className={`block text-sm ${visualMeta.helperClassName}`}>
                         {visualMeta.helperText}
                       </span>
                     ) : null}
                   </div>
                   <span
-                    className={`inline-flex min-w-[74px] shrink-0 justify-center rounded-full px-3 py-1.5 text-sm font-semibold ${visualMeta.badgeClassName}`}
+                    className={`inline-flex min-w-[82px] shrink-0 justify-center rounded-full px-3 py-1.5 text-sm font-semibold ${visualMeta.badgeClassName}`}
                   >
                     {visualMeta.badgeText}
                   </span>
@@ -606,9 +615,9 @@ export function PlayExperience() {
           {confirmedOptionId ? (
             <div
               aria-live="polite"
-              className="mt-6 rounded-[24px] bg-[#eef8ff] px-4 py-4 text-sm text-[#0f4d97] sm:text-base"
+              className="mt-6 rounded-[24px] border border-[#92dcff]/24 bg-[#092742] px-4 py-4 text-sm text-[#d8f4ff] sm:text-base"
             >
-              הבחירה נשמרה. אפשר להמשיך לשאלה הבאה.
+              הבחירה נשמרה. אפשר להמשיך לרגע הבא.
             </div>
           ) : null}
 
@@ -617,7 +626,7 @@ export function PlayExperience() {
               <button
                 type="button"
                 onClick={continueFromReview}
-                className="inline-flex items-center gap-2 rounded-full bg-[#0f61d8] px-5 py-3 text-white shadow-[0_18px_45px_rgba(15,97,216,0.25)]"
+                className="hero-button-primary inline-flex items-center gap-2 rounded-full px-5 py-3"
               >
                 <ArrowLeft size={16} />
                 {voice.continueLabel}
@@ -627,44 +636,49 @@ export function PlayExperience() {
                 type="button"
                 onClick={skipCurrent}
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-full border border-[#cfe4ff] px-4 py-2 text-sm text-[#47688e]"
+                className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
               >
                 <SkipForward size={16} />
                 {voice.skipLabel}
               </button>
             )}
           </div>
-        </section>
+        </motion.section>
       ) : null}
 
       {currentMission ? (
-        <section className="glass-panel rounded-[34px] p-5 sm:p-8">
+        <motion.section
+          key={currentStepKey}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="stage-panel rounded-[36px] p-5 sm:p-8"
+        >
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-[#6888ae]">
+              <p className="text-sm text-[var(--text-dim)]">
                 משימת צילום {missionProgress.current} מתוך {missionProgress.total}
               </p>
-              <h2 className="font-display text-3xl text-[#0f254a]">
+              <h2 className="mt-2 font-display text-3xl text-white">
                 {currentMission.title}
               </h2>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#edf6ff] px-4 py-2 text-sm text-[#0f61d8]">
+            <div className="broadcast-chip">
               <Camera size={16} />
-              משימה קהילתית
+              mission capture
             </div>
           </div>
 
-          <p className="max-w-3xl text-xl leading-relaxed text-[#153a6b]">
+          <p className="max-w-3xl text-xl leading-relaxed text-white">
             {currentMission.prompt}
           </p>
-          <p className="mt-3 rounded-[20px] bg-[#f8fbff] px-4 py-3 text-sm text-[#4b688d]">
+          <p className="mt-3 rounded-[20px] border border-white/10 bg-white/6 px-4 py-3 text-sm text-[var(--text-soft)]">
             {voice.photoHint}
           </p>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-4">
-              <div className="rounded-[28px] border border-white/60 bg-white/70 p-3">
-                <div className="relative h-[260px] overflow-hidden rounded-[22px] bg-[#eef5ff] sm:h-[320px]">
+              <div className="rounded-[28px] border border-white/10 bg-white/6 p-3">
+                <div className="relative h-[260px] overflow-hidden rounded-[22px] bg-[#08172d] sm:h-[320px]">
                   {previewUrl ? (
                     <Image
                       src={previewUrl}
@@ -674,25 +688,25 @@ export function PlayExperience() {
                     />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                      <Camera className="text-[#0f61d8]" size={36} />
-                      <p className="mt-3 text-lg text-[#143763]">
+                      <Camera className="text-[#89dbff]" size={36} />
+                      <p className="mt-3 text-lg text-white">
                         בחרו תמונה והיא תופיע כאן בלי להזיז את המסך
                       </p>
-                      <p className="mt-2 text-sm text-[#6282a8]">
+                      <p className="mt-2 text-sm text-[var(--text-soft)]">
                         עדיף רגע אמיתי, ברור ומואר מתוך האירוע
                       </p>
                     </div>
                   )}
 
                   {busy ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#082a54]/45 text-white">
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#02101ecc] text-white">
                       <LoaderCircle className="animate-spin" size={28} />
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              <label className="inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-[22px] border border-[#cfe4ff] bg-white/80 px-5 text-[#0f61d8]">
+              <label className="hero-button-secondary inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-[22px] px-5 text-white">
                 <Camera size={18} />
                 {selectedFile ? voice.replacePhotoLabel : voice.choosePhotoLabel}
                 <input
@@ -710,7 +724,7 @@ export function PlayExperience() {
 
             <div className="space-y-4">
               <label className="block">
-                <span className="mb-2 block text-sm text-[#56759b]">
+                <span className="mb-2 block text-sm text-[var(--text-soft)]">
                   {voice.photoCaptionLabel}
                 </span>
                 <textarea
@@ -719,13 +733,13 @@ export function PlayExperience() {
                   name="missionCaption"
                   autoComplete="off"
                   rows={4}
-                  className="glass-panel w-full rounded-[24px] px-4 py-4 text-right text-[#123460]"
+                  className="stage-panel-soft w-full rounded-[24px] px-4 py-4 text-right text-white"
                   placeholder={voice.photoCaptionPlaceholder}
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm text-[#56759b]">
+                <span className="mb-2 flex items-center gap-2 text-sm text-[var(--text-soft)]">
                   <Users size={16} />
                   {voice.newPeopleMetLabel}
                 </span>
@@ -738,7 +752,7 @@ export function PlayExperience() {
                   value={newPeopleMet}
                   onChange={(event) => setNewPeopleMet(event.target.value)}
                   placeholder="0"
-                  className="glass-panel h-14 w-full rounded-[22px] px-4 text-right text-[#123460]"
+                  className="stage-panel-soft h-14 w-full rounded-[22px] px-4 text-right text-white"
                 />
               </label>
 
@@ -747,7 +761,7 @@ export function PlayExperience() {
                   type="button"
                   onClick={submitMission}
                   disabled={busy}
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-[22px] bg-[#0f61d8] text-white shadow-[0_18px_45px_rgba(15,97,216,0.25)]"
+                  className="hero-button-primary inline-flex h-14 items-center justify-center gap-2 rounded-[22px]"
                 >
                   <Camera size={18} />
                   {voice.submitMissionLabel}
@@ -756,7 +770,7 @@ export function PlayExperience() {
                   type="button"
                   onClick={skipCurrent}
                   disabled={busy}
-                  className="inline-flex h-14 items-center justify-center gap-2 rounded-[22px] border border-[#cfe4ff] text-[#47688e]"
+                  className="hero-button-secondary inline-flex h-14 items-center justify-center gap-2 rounded-[22px] text-white"
                 >
                   <ArrowLeft size={18} />
                   {voice.skipLabel}
@@ -764,19 +778,19 @@ export function PlayExperience() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="glass-panel rounded-[28px] p-5">
-          <p className="text-sm text-[#6888ae]">אנשים חדשים</p>
-          <p className="mt-2 font-display text-3xl text-[#0f254a]">
+        <div className="metric-plate px-5 py-5">
+          <p className="text-sm text-[var(--text-dim)]">אנשים חדשים</p>
+          <p className="mt-2 font-display text-3xl text-white">
             {session.player.newPeopleMet}
           </p>
         </div>
-        <div className="glass-panel rounded-[28px] p-5">
-          <p className="text-sm text-[#6888ae]">משימות צילום</p>
-          <p className="mt-2 font-display text-3xl text-[#0f254a]">
+        <div className="metric-plate px-5 py-5">
+          <p className="text-sm text-[var(--text-dim)]">משימות צילום</p>
+          <p className="mt-2 font-display text-3xl text-white">
             {session.player.photoMissionsCompleted}
           </p>
         </div>

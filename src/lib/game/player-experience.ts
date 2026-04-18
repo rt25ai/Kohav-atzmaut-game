@@ -1,8 +1,4 @@
-import type {
-  GalleryEntry,
-  ParticipantType,
-  RunStep,
-} from "@/lib/types";
+import type { GalleryEntry, ParticipantType, RunStep } from "@/lib/types";
 
 type ParticipantOptions<T> = {
   solo_male: T;
@@ -41,46 +37,46 @@ export type GalleryGroup = {
 
 const participantVoices: Record<ParticipantType, ParticipantVoice> = {
   solo_male: {
-    startLabel: "התחל לשחק",
-    startingLabel: "נכנס למשחק...",
+    startLabel: "התחל את הערב",
+    startingLabel: "נכנס לשידור החי...",
     readyLine: "מוכן לשלב הבא?",
-    continueLabel: "המשך לשלב הבא",
-    skipLabel: "דלג לשלב הבא",
+    continueLabel: "המשך לרגע הבא",
+    skipLabel: "דלג לרגע הבא",
     choosePhotoLabel: "בחר תמונה",
     replacePhotoLabel: "בחר תמונה אחרת",
-    submitMissionLabel: "שלח וקבל נקודות",
-    photoHint: "צלם רגע אמיתי מהאירוע והעלה אותו לכאן.",
-    photoCaptionLabel: "כתוב מה קורה בתמונה",
+    submitMissionLabel: "שלח למשימה החיה",
+    photoHint: "צלם רגע אמיתי מהאירוע והעלה אותו לקיר החי של הקהילה.",
+    photoCaptionLabel: "כתוב מה רואים בתמונה",
     photoCaptionPlaceholder: "מה קורה ברגע הזה?",
     newPeopleMetLabel: "כמה אנשים חדשים הכרת במשימה הזו?",
     returnHomeLabel: "סיים וחזור לבית",
   },
   solo_female: {
-    startLabel: "התחילי לשחק",
-    startingLabel: "נכנסת למשחק...",
+    startLabel: "התחילי את הערב",
+    startingLabel: "נכנסת לשידור החי...",
     readyLine: "מוכנה לשלב הבא?",
-    continueLabel: "המשיכי לשלב הבא",
-    skipLabel: "דלגי לשלב הבא",
+    continueLabel: "המשיכי לרגע הבא",
+    skipLabel: "דלגי לרגע הבא",
     choosePhotoLabel: "בחרי תמונה",
     replacePhotoLabel: "בחרי תמונה אחרת",
-    submitMissionLabel: "שלחי וקבלי נקודות",
-    photoHint: "צלמי רגע אמיתי מהאירוע והעלי אותו לכאן.",
-    photoCaptionLabel: "כתבי מה קורה בתמונה",
+    submitMissionLabel: "שלחי למשימה החיה",
+    photoHint: "צלמי רגע אמיתי מהאירוע והעלי אותו לקיר החי של הקהילה.",
+    photoCaptionLabel: "כתבי מה רואים בתמונה",
     photoCaptionPlaceholder: "מה קורה ברגע הזה?",
     newPeopleMetLabel: "כמה אנשים חדשים הכרת במשימה הזו?",
     returnHomeLabel: "סיימי וחזרי לבית",
   },
   family: {
-    startLabel: "התחילו לשחק",
-    startingLabel: "נכנסים למשחק...",
+    startLabel: "התחילו את הערב",
+    startingLabel: "נכנסים לשידור החי...",
     readyLine: "מוכנים לשלב הבא?",
-    continueLabel: "המשיכו לשלב הבא",
-    skipLabel: "דלגו לשלב הבא",
+    continueLabel: "המשיכו לרגע הבא",
+    skipLabel: "דלגו לרגע הבא",
     choosePhotoLabel: "בחרו תמונה",
     replacePhotoLabel: "בחרו תמונה אחרת",
-    submitMissionLabel: "שלחו וקבלו נקודות",
-    photoHint: "צלמו רגע אמיתי מהאירוע והעלו אותו לכאן.",
-    photoCaptionLabel: "כתבו מה קורה בתמונה",
+    submitMissionLabel: "שלחו למשימה החיה",
+    photoHint: "צלמו רגע אמיתי מהאירוע והעלו אותו לקיר החי של הקהילה.",
+    photoCaptionLabel: "כתבו מה רואים בתמונה",
     photoCaptionPlaceholder: "מה קורה ברגע הזה?",
     newPeopleMetLabel: "כמה אנשים חדשים הכרתם במשימה הזו?",
     returnHomeLabel: "סיימו וחזרו לבית",
@@ -88,11 +84,7 @@ const participantVoices: Record<ParticipantType, ParticipantVoice> = {
 };
 
 export function normalizeParticipantType(value: unknown): ParticipantType {
-  if (
-    value === "solo_male" ||
-    value === "solo_female" ||
-    value === "family"
-  ) {
+  if (value === "solo_male" || value === "solo_female" || value === "family") {
     return value;
   }
 

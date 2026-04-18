@@ -15,7 +15,7 @@ export function AppShell({
       <BrandHeader />
       <main
         id="main-content"
-        className="relative z-10 mx-auto max-w-6xl px-4 pb-10 pt-24 sm:px-6 lg:px-8"
+        className="relative z-10 mx-auto max-w-[92rem] px-4 pb-12 pt-28 sm:px-6 lg:px-8"
       >
         {children}
       </main>

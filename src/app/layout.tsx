@@ -18,7 +18,8 @@ const secularOne = Secular_One({
   weight: "400",
 });
 
-const APP_DESCRIPTION = "משחק קהילתי חי ליום העצמאות עבור מושב כוכב מיכאל";
+const APP_DESCRIPTION =
+  "סקר קהילתי חי, חגיגי ומונפש ליום העצמאות של כוכב מיכאל.";
 const META_IMAGE_PATH = "/branding/site-meta.png";
 const ICON_IMAGE_PATH = "/branding/site-icon.png";
 const APPLE_ICON_PATH = "/branding/site-apple.png";
@@ -63,10 +64,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`${rubik.variable} ${secularOne.variable} font-sans antialiased`}>
+      <body
+        className={`${rubik.variable} ${secularOne.variable} font-sans antialiased`}
+      >
         <a
           href="#main-content"
-          className="sr-only absolute right-4 top-4 z-50 rounded-full bg-white px-4 py-2 text-[#0f254a] focus:not-sr-only focus:outline-2 focus:outline-[#0f61d8]"
+          className="sr-only absolute right-4 top-4 z-50 rounded-full bg-white px-4 py-2 text-[#08162d] focus:not-sr-only focus:outline-2 focus:outline-[#5cb7ff]"
         >
           דילוג לתוכן הראשי
         </a>

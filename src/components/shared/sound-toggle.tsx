@@ -19,7 +19,7 @@ export function SoundToggle() {
         }
       }}
       className={cn(
-        "glass-panel inline-flex h-10 w-10 items-center justify-center rounded-full text-[#0d3567] transition-transform hover:scale-[1.04]",
+        "hero-button-secondary inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--text-main)] transition-transform hover:scale-[1.04]",
         !interactive && "cursor-not-allowed opacity-60",
       )}
       aria-label={soundEnabled ? "השתק צליל" : "הפעל צליל"}
