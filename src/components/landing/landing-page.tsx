@@ -13,9 +13,9 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { useSound } from "@/components/shared/sound-provider";
 import {
   FESTIVE_GLOW_OVERLAY,
+  HOME_HERO_IMAGE,
   HERO_POSTER_ANCHOR_IMAGE,
   RESULTS_CELEBRATION_OVERLAY,
-  STAGE_HERO_IMAGE,
 } from "@/lib/config";
 import { useLiveJson } from "@/hooks/use-live-json";
 import { buildPhotoLightboxItem } from "@/lib/game/photo-gallery";
@@ -107,7 +107,7 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
       <section className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden rounded-b-[2.75rem] border-b border-white/8">
         <div className="relative min-h-[86svh]">
           <Image
-            src={STAGE_HERO_IMAGE}
+            src={HOME_HERO_IMAGE}
             alt="אווירת במה חגיגית לערב הקהילתי"
             fill
             priority

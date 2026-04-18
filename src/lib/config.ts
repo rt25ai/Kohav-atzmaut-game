@@ -23,6 +23,7 @@ export const IS_SUPABASE_ENABLED = Boolean(
 );
 
 export const HERO_IMAGE = "/branding/hero.png";
+export const HOME_HERO_IMAGE = "/branding/home-hero-bg-custom.png";
 export const HERO_POSTER_ANCHOR_IMAGE = "/branding/hero-poster-anchor-v1.png";
 export const STAGE_HERO_IMAGE = "/branding/stage-hero-bg-v2.png";
 export const FESTIVE_GLOW_OVERLAY = "/branding/festive-glow-overlay-v2.png";
