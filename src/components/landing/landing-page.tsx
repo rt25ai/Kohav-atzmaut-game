@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Medal, Play, Sparkles, Users } from "lucide-react";
+import { Camera, Play, Sparkles, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { LandingIntroOverlay } from "@/components/landing/landing-intro-overlay";
@@ -103,16 +103,16 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
             >
               <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/12 px-4 py-2 text-sm text-white/92 backdrop-blur-md">
                 <Sparkles size={16} />
-                משחק קהילתי חי ליום העצמאות
+                כוכבניק - סקר הכי ישראלי שיש
               </p>
               <h1 className="font-display text-4xl leading-[1.02] text-white sm:text-6xl">
-                כוכב של עצמאות
+                כוכבניק
               </h1>
               <p className="mt-3 max-w-xl text-base leading-7 text-[#eaf6ff] sm:text-lg">
                 {data.settings.introText}
               </p>
               <div className="mt-8 max-w-xl rounded-[28px] border border-white/16 bg-white/12 p-3 backdrop-blur-xl">
-                <p className="mb-3 text-sm text-white/88">איך תרצו להיכנס למשחק?</p>
+                <p className="mb-3 text-sm text-white/88">איך תרצו להיכנס לסקר?</p>
                 <div className="mb-4 grid gap-2 sm:grid-cols-3">
                   {[
                     {
@@ -158,8 +158,8 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
                 </div>
                 <label className="mb-2 block text-sm text-white/88">
                   {participantType === "family"
-                    ? "איך יקראו לכם בלוח התוצאות?"
-                    : "איך יקראו לך בלוח התוצאות?"}
+                    ? "איך יקראו לכם בתוך הסקר?"
+                    : "איך יקראו לך בתוך הסקר?"}
                 </label>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <input
@@ -189,13 +189,13 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
-                    href="/leaderboard"
+                    href="/results"
                     onClick={() => {
                       play("click");
                     }}
                     className="rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm text-white"
                   >
-                    ללוח התוצאות
+                    תוצאות הסקר
                   </Link>
                   <Link
                     href="/gallery"
@@ -204,7 +204,7 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
                     }}
                     className="rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm text-white"
                   >
-                    לגלריה
+                    גלריה
                   </Link>
                 </div>
               </div>
@@ -218,17 +218,17 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
           {
             icon: Users,
             title: "נרשמים",
-            text: 'מקלידים שם, נכנסים מיד דרך ה-QR ומתחילים את המסלול.',
+            text: "מקלידים שם, נכנסים מיד ומתחילים מסלול קהילתי קצר וזורם.",
           },
           {
-            icon: Medal,
-            title: "עונים וצוברים",
-            text: "20 שאלות, בונוסי מהירות, קומבו וניקוד חי על הלוח.",
+            icon: Sparkles,
+            title: "עונים ומגלים",
+            text: "20 שאלות, בחירה אחת בכל פעם, ורק בסוף רואים איך כולם בחרו.",
           },
           {
             icon: Camera,
             title: "מצלמים ומתחברים",
-            text: "משימות צילום באמצע המשחק, גלריה חיה וסיום קהילתי גדול.",
+            text: "משימות צילום באמצע הדרך יוצרות גלריה חיה עם רגעים אמיתיים מהאירוע.",
           },
         ].map((item, index) => (
           <motion.article
@@ -250,7 +250,7 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
         <div className="glass-panel rounded-[34px] p-6 sm:p-8">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-[#4a678f]">מה קורה עכשיו במשחק</p>
+              <p className="text-sm text-[#4a678f]">מה קורה עכשיו באירוע</p>
               <h2 className="font-display text-2xl text-[#0f254a]">אירועים חיים מהשטח</h2>
             </div>
             <div className="rounded-full bg-[#eef6ff] px-4 py-2 text-sm text-[#0f61d8]">
@@ -278,23 +278,10 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
 
         <div className="space-y-4">
           <div className="glass-panel rounded-[30px] p-6">
-            <p className="text-sm text-[#4a678f]">המשתתפים</p>
+            <p className="text-sm text-[#4a678f]">משתתפים</p>
             <p className="mt-2 font-display text-4xl text-[#0f254a]">
               {data.totalParticipants}
             </p>
-          </div>
-          <div className="glass-panel rounded-[30px] p-6">
-            <p className="text-sm text-[#4a678f]">שינויים בלוח</p>
-            <div className="mt-3 space-y-2">
-              {data.leaderboard.slice(0, 3).map((entry) => (
-                <div key={entry.playerId} className="flex items-center justify-between text-sm">
-                  <span className="text-[#183b6b]">{entry.name}</span>
-                  <span className="rounded-full bg-[#e9f4ff] px-3 py-1 text-[#0f61d8]">
-                    מקום {entry.rank}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
           <div className="glass-panel rounded-[30px] p-6">
             <p className="text-sm text-[#4a678f]">תמונות אחרונות</p>
@@ -318,12 +305,6 @@ export function LandingPage({ initialSnapshot }: LandingPageProps) {
                   />
                   <div className="absolute right-2 top-2 rounded-full bg-[#031c3ecc] px-2 py-1 text-[10px] text-white">
                     {photo.playerName}
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(3,21,44,0.9))] px-2 pb-2 pt-6 text-white">
-                    <p className="truncate text-[11px] font-medium">{photo.missionTitle}</p>
-                    {photo.caption ? (
-                      <p className="line-clamp-2 text-[10px] text-white/78">{photo.caption}</p>
-                    ) : null}
                   </div>
                 </button>
               ))}

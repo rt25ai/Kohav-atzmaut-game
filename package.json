@@ -1,0 +1,50 @@
+{
+  "name": "kochav-michael-independence-game",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "seed": "node --env-file=.env.local --import tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.3",
+    "@swc/helpers": "^0.5.21",
+    "browser-image-compression": "^2.0.2",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "howler": "^2.2.4",
+    "idb-keyval": "^6.2.2",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.8.0",
+    "nanoid": "^5.1.9",
+    "next": "^15.5.15",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/howler": "^2.2.12",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "@typescript-eslint/scope-manager": "^8.46.2",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.15",
+    "playwright": "^1.59.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
