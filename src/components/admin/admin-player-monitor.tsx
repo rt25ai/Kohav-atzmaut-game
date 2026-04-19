@@ -50,7 +50,7 @@ function formatLastSeen(iso: string) {
 export function AdminPlayerMonitor({ players }: AdminPlayerMonitorProps) {
   return (
     <section
-      className="glass-panel min-w-0 rounded-[34px] p-6"
+      className="admin-panel min-w-0 rounded-[34px] p-6"
       data-admin-player-monitor-section
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -76,7 +76,7 @@ export function AdminPlayerMonitor({ players }: AdminPlayerMonitorProps) {
           <article
             key={player.playerId}
             data-admin-player-monitor-row
-            className="min-w-0 shrink-0 basis-[85vw] snap-start rounded-[26px] bg-white/60 p-4 md:basis-auto"
+            className="admin-card min-w-0 shrink-0 basis-[85vw] snap-start rounded-[26px] p-4 md:basis-auto"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

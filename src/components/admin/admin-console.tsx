@@ -385,12 +385,12 @@ export function AdminConsole({
   if (!authorized || !snapshot) {
     return (
       <div className="mx-auto max-w-xl">
-        <div className="glass-panel rounded-[34px] p-8">
-          <p className="text-sm text-[#6182a8]">אזור ניהול סודי</p>
+        <div className="admin-panel rounded-[34px] p-8">
+          <p className="text-sm text-[#5d7ca3]">אזור ניהול סודי</p>
           <h1 className="mt-2 font-display text-3xl text-[#0f254a]">
             כניסה לחדר הבקרה
           </h1>
-          <p className="mt-3 text-[#58769d]">
+          <p className="mt-3 text-[#3d5b82]">
             רק לצוות האירוע. לאחר ההתחברות תישמר עוגיית ניהול מאובטחת בדפדפן.
           </p>
           <input
@@ -400,7 +400,7 @@ export function AdminConsole({
             name="adminPassword"
             autoComplete="current-password"
             placeholder="סיסמת ניהול..."
-            className="glass-panel mt-6 h-14 w-full rounded-[24px] px-4 text-right"
+            className="admin-input mt-6 h-14 w-full rounded-[24px] px-4 text-right"
           />
           {error ? <p className="mt-3 text-sm text-[#9e3c3c]">{error}</p> : null}
           <button
@@ -453,7 +453,7 @@ export function AdminConsole({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="glass-panel order-1 rounded-[34px] p-6 sm:p-8">
+      <section className="admin-panel order-1 rounded-[34px] p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[0.95rem] text-[#5d7ca3]">חדר הבקרה של הערב</p>
@@ -511,7 +511,7 @@ export function AdminConsole({
             value: snapshot.playersFinishingCurrentStep,
           },
         ].map((item) => (
-          <div key={item.label} className="glass-panel rounded-[28px] p-5">
+          <div key={item.label} className="admin-panel rounded-[28px] p-5">
             <p className="text-[0.92rem] leading-6 text-[#5d7ca3] sm:text-sm">
               {item.label}
             </p>
@@ -522,7 +522,7 @@ export function AdminConsole({
         ))}
       </section>
       <section
-        className="glass-panel order-3 rounded-[34px] p-5 sm:p-6"
+        className="admin-panel order-3 rounded-[34px] p-5 sm:p-6"
         data-admin-survey-control-section
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -595,7 +595,7 @@ export function AdminConsole({
         className="order-4 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]"
         data-admin-tools-section
       >
-        <div className="glass-panel rounded-[34px] p-5 sm:p-6">
+        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
           <p className="text-[0.95rem] text-[#5d7ca3]">כלים מהירים</p>
           <h2 className="mt-2 font-display text-2xl text-[#0f254a]">
             שליטה קומפקטית למסך קטן
@@ -606,7 +606,7 @@ export function AdminConsole({
           </p>
 
           <div className="mt-5 space-y-4">
-            <label className="flex items-center justify-between rounded-[24px] bg-white/55 px-4 py-4">
+            <label className="flex items-center justify-between rounded-[24px] bg-[#f3f8ff] px-4 py-4">
               <div className="min-w-0">
                 <span className="block text-base font-medium text-[#143764]">
                   צליל גלובלי
@@ -626,7 +626,7 @@ export function AdminConsole({
               />
             </label>
 
-            <div className="rounded-[24px] bg-white/55 p-4">
+            <div className="rounded-[24px] bg-[#f3f8ff] p-4">
               <p className="text-base font-medium text-[#143764]">כניסה מהירה למשחק</p>
               <p className="mt-2 break-all text-[0.95rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
                 {publicUrl}
@@ -655,7 +655,7 @@ export function AdminConsole({
           </div>
         </div>
 
-        <div className="glass-panel rounded-[34px] p-5 sm:p-6">
+        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
           <div className="flex flex-col gap-2 text-[#0f61d8] sm:flex-row sm:items-center">
             <QrCode size={20} />
             <p className="font-display text-xl">QR לכניסה למשחק</p>
@@ -676,7 +676,7 @@ export function AdminConsole({
       </section>
 
       <section
-        className="glass-panel order-6 rounded-[34px] p-5 sm:p-6"
+        className="admin-panel order-6 rounded-[34px] p-5 sm:p-6"
         data-admin-host-section
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -695,7 +695,7 @@ export function AdminConsole({
         </div>
 
         <div className="mt-5 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[28px] bg-white/55 p-5">
+          <div className="rounded-[28px] bg-[#f3f8ff] p-5">
             <div className="space-y-4">
               <label className="block">
                 <span className="mb-2 block text-sm text-[#5c7ca2]">הודעה</span>
@@ -704,7 +704,7 @@ export function AdminConsole({
                   onChange={(event) => setHostMessage(event.target.value)}
                   rows={4}
                   maxLength={180}
-                  className="glass-panel w-full rounded-[24px] px-4 py-4 text-right"
+                  className="admin-input w-full rounded-[24px] px-4 py-4 text-right"
                   placeholder="לדוגמה: כולם מתכנסים ליד הבמה בעוד 5 דקות"
                 />
               </label>
@@ -713,7 +713,7 @@ export function AdminConsole({
                 <div className="rounded-[24px] bg-[#eff6ff] p-4">
                   <p className="text-base font-medium text-[#143764]">מתי לשלוח</p>
                   <div className="mt-3 grid gap-2">
-                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
                       <span>שליחה מיידית</span>
                       <input
                         type="radio"
@@ -722,7 +722,7 @@ export function AdminConsole({
                         onChange={() => setHostPublishMode("now")}
                       />
                     </label>
-                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
                       <span>תזמון לשעה מדויקת</span>
                       <input
                         type="radio"
@@ -742,7 +742,7 @@ export function AdminConsole({
                         value={hostScheduledFor}
                         onChange={(event) => setHostScheduledFor(event.target.value)}
                         type="datetime-local"
-                        className="glass-panel h-12 w-full rounded-[18px] px-4 text-right"
+                        className="admin-input h-12 w-full rounded-[18px] px-4 text-right"
                       />
                     </label>
                   ) : null}
@@ -751,7 +751,7 @@ export function AdminConsole({
                 <div className="rounded-[24px] bg-[#eff6ff] p-4">
                   <p className="text-base font-medium text-[#143764]">כמה זמן היא תישאר</p>
                   <div className="mt-3 grid gap-2">
-                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
                       <span>עד ההודעה הבאה</span>
                       <input
                         type="radio"
@@ -760,7 +760,7 @@ export function AdminConsole({
                         onChange={() => setHostEndsMode("until_next")}
                       />
                     </label>
-                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
                       <span>עד זמן סיום מוגדר</span>
                       <input
                         type="radio"
@@ -780,7 +780,7 @@ export function AdminConsole({
                         value={hostEndsAt}
                         onChange={(event) => setHostEndsAt(event.target.value)}
                         type="datetime-local"
-                        className="glass-panel h-12 w-full rounded-[18px] px-4 text-right"
+                        className="admin-input h-12 w-full rounded-[18px] px-4 text-right"
                       />
                     </label>
                   ) : null}
@@ -811,7 +811,7 @@ export function AdminConsole({
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-[28px] bg-white/55 p-5">
+            <div className="rounded-[28px] bg-[#f3f8ff] p-5">
               <h3 className="font-display text-xl text-[#0f254a]">הודעה פעילה עכשיו</h3>
               {activeHostAnnouncement ? (
                 <div className="mt-4 space-y-3">
@@ -849,7 +849,7 @@ export function AdminConsole({
               )}
             </div>
 
-            <div className="rounded-[28px] bg-white/55 p-5">
+            <div className="rounded-[28px] bg-[#f3f8ff] p-5">
               <h3 className="font-display text-xl text-[#0f254a]">הודעות מתוזמנות</h3>
               <div className="mt-4 space-y-3">
                 {scheduledHostAnnouncements.length === 0 ? (
@@ -923,7 +923,7 @@ export function AdminConsole({
           </div>
         </div>
 
-        <div className="mt-6 rounded-[28px] bg-white/45 p-5">
+        <div className="mt-6 rounded-[28px] bg-[#eef4fc] p-5">
           <h3 className="font-display text-xl text-[#0f254a]">הודעות קודמות</h3>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {previousHostAnnouncements.length === 0 ? (
@@ -934,7 +934,7 @@ export function AdminConsole({
               previousHostAnnouncements.map((announcement) => (
                 <article
                   key={announcement.id}
-                  className="rounded-[22px] bg-white/70 px-4 py-4"
+                  className="rounded-[22px] bg-white px-4 py-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -980,7 +980,7 @@ export function AdminConsole({
 
 
       <section
-        className="glass-panel order-7 rounded-[34px] p-6"
+        className="admin-panel order-7 rounded-[34px] p-6"
         data-admin-gallery-section
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1007,7 +1007,7 @@ export function AdminConsole({
           {snapshot.photos.map((photo) => (
             <div
               key={photo.id}
-              className="min-w-0 shrink-0 basis-[72vw] snap-start overflow-hidden rounded-[22px] bg-white/55 md:basis-auto"
+              className="min-w-0 shrink-0 basis-[72vw] snap-start overflow-hidden rounded-[22px] bg-[#f3f8ff] md:basis-auto"
             >
               <button
                 type="button"

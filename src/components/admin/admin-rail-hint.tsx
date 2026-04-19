@@ -11,7 +11,7 @@ export function AdminRailHint({
 }: AdminRailHintProps) {
   return (
     <div
-      className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#cfe4ff] bg-white/70 px-3 py-2 text-sm text-[#43638b] md:hidden"
+      className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#cfe4ff] bg-[#eaf3ff] px-3 py-2 text-sm text-[#1f3f6e] md:hidden"
       data-admin-rail-hint
     >
       <ArrowLeftRight size={14} />

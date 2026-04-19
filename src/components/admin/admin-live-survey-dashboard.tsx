@@ -14,7 +14,7 @@ export function AdminLiveSurveyDashboard({
 }: AdminLiveSurveyDashboardProps) {
   return (
     <section
-      className="glass-panel min-w-0 rounded-[34px] p-6"
+      className="admin-panel min-w-0 rounded-[34px] p-6"
       data-admin-live-survey-dashboard
       data-admin-results-section
     >
@@ -41,7 +41,7 @@ export function AdminLiveSurveyDashboard({
           <article
             key={question.questionId}
             data-admin-live-question-card
-            className="min-w-0 shrink-0 basis-[85vw] snap-start rounded-[28px] bg-white/60 p-5 md:basis-auto"
+            className="admin-card min-w-0 shrink-0 basis-[85vw] snap-start rounded-[28px] p-5 md:basis-auto"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
