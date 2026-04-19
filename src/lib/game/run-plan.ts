@@ -15,13 +15,30 @@ export function shuffleArray<T>(items: T[], seed = Math.random()): T[] {
   return clone;
 }
 
+export function getOrderedQuestionIds(questions: Question[]) {
+  return questions.map((question) => question.id);
+}
+
+export function getOrderedMissionIds(missions: PhotoMission[]) {
+  const standardMissionIds = missions
+    .filter((mission) => !mission.isFinal)
+    .map((mission) => mission.id);
+  const finalMissionId = missions.find((mission) => mission.isFinal)?.id;
+
+  return [...standardMissionIds, finalMissionId].filter(Boolean) as string[];
+}
+
 export function buildRunSteps(
   questionOrder: string[],
   missionOrder: string[],
 ): RunStep[] {
   const steps: RunStep[] = [];
-  const standardMissionIds = missionOrder.slice(0, 6);
-  const finalMissionId = missionOrder[6];
+  const standardMissionCount = Math.floor(questionOrder.length / 3);
+  const standardMissionIds = missionOrder.slice(0, standardMissionCount);
+  const finalMissionId =
+    missionOrder.length > standardMissionCount
+      ? missionOrder.at(-1) ?? null
+      : null;
 
   questionOrder.forEach((questionId, index) => {
     steps.push({ kind: "question", questionId });

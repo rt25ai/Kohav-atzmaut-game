@@ -3,21 +3,37 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Camera, Sparkles, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useState } from "react";
 
-import { SurveyResultsList } from "@/components/results/survey-results-list";
+import { SummaryExtraPhotoForm } from "@/components/summary/summary-extra-photo-form";
+import { SummaryResultsSheet } from "@/components/summary/summary-results-sheet";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
+import { FestiveBurst } from "@/components/shared/festive-burst";
 import { useSound } from "@/components/shared/sound-provider";
 import { RESULTS_CELEBRATION_OVERLAY } from "@/lib/config";
+import { getFestiveCue, type FestiveCue } from "@/lib/game/festive-feedback";
 import type { SummarySnapshot } from "@/lib/types";
-import { getStoredPlayerId } from "@/lib/utils/local-session";
+import {
+  clearStoredActiveGame,
+  getStoredPlayerId,
+} from "@/lib/utils/local-session";
 
 export function SummaryPage() {
+  const router = useRouter();
   const { play, setGlobalSoundEnabled } = useSound();
   const [summary, setSummary] = useState<SummarySnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [summaryCue, setSummaryCue] = useState<FestiveCue | null>(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    }
+
     const playerId = getStoredPlayerId();
     if (!playerId) {
       setLoading(false);
@@ -33,6 +49,7 @@ export function SummaryPage() {
         const json = (await response.json()) as { summary: SummarySnapshot };
         setSummary(json.summary);
         setGlobalSoundEnabled(json.summary.settings.globalSoundEnabled);
+        setSummaryCue(getFestiveCue("summary-finished", 0));
         play("celebration");
       })
       .finally(() => setLoading(false));
@@ -45,13 +62,25 @@ export function SummaryPage() {
   if (!summary) {
     return (
       <div className="stage-panel rounded-[34px] p-8 text-center">
-        <h1 className="font-display text-3xl text-white">אין עדיין סיכום להצגה</h1>
+        <h1 className="font-display text-3xl text-white">
+          אין עדיין סיכום להצגה
+        </h1>
         <p className="mt-3 text-[var(--text-soft)]">
           כדי להגיע לכאן צריך להתחיל ולסיים משחק.
         </p>
       </div>
     );
   }
+
+  const hasQuestionResults = summary.survey.questionResults.length > 0;
+
+  const restartGame = () => {
+    clearStoredActiveGame(summary.player.id);
+    setResultsOpen(false);
+    startTransition(() => {
+      router.push("/");
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -65,21 +94,24 @@ export function SummaryPage() {
         <div className="relative z-10">
           <div className="section-kicker">
             <Sparkles size={15} />
-            רגע ה־reveal הגדול
+            רגע הסיום החגיגי
           </div>
           <h1 className="mt-4 font-display text-4xl leading-none text-white sm:text-6xl">
-            כך הקהילה בחרה
+            סיימתם את המשחק
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--text-soft)]">
-            סיימת את המסלול. עכשיו נפתחת התמונה המלאה: איפה הקהילה הייתה כמעט
-            מאוחדת, איפה היא התחלקה, ואיפה הבחירה שלך בלטה מול כולם.
+            כאן רואים את תמונת הערב שלכם: כמה שאלות השלמתם, כמה משימות צילום
+            עשיתם, ואיך הבחירות שלכם השתלבו עם שאר המשתתפים.
           </p>
+          <div className="min-h-[12rem] sm:min-h-[14rem]">
+            <FestiveBurst cue={summaryCue} scopeKey="summary-finished" />
+          </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="metric-plate px-6 py-6">
-          <p className="text-sm text-[var(--text-dim)]">שאלות שהשלמת</p>
+          <p className="text-sm text-[var(--text-dim)]">שאלות שהשלמתם</p>
           <p className="mt-3 font-display text-4xl text-white">
             <AnimatedCounter value={summary.survey.questionResults.length} />
           </p>
@@ -91,7 +123,7 @@ export function SummaryPage() {
           </p>
         </div>
         <div className="metric-plate px-6 py-6">
-          <p className="text-sm text-[var(--text-dim)]">אנשים חדשים שפגשת</p>
+          <p className="text-sm text-[var(--text-dim)]">אנשים חדשים שפגשתם</p>
           <p className="mt-3 font-display text-4xl text-white">
             <AnimatedCounter value={summary.player.newPeopleMet} />
           </p>
@@ -103,23 +135,38 @@ export function SummaryPage() {
           <div>
             <p className="text-sm text-[var(--text-dim)]">מסך סיום קהילתי</p>
             <h2 className="mt-2 font-display text-3xl text-white">
-              איפה את או אתה בתוך התמונה הגדולה?
+              מה תרצו לעשות עכשיו?
             </h2>
           </div>
-          <div className="broadcast-chip">
-            <Users size={14} />
-            כל שאלה נצבעת לפי בחירת הקהילה
-          </div>
+          {hasQuestionResults ? (
+            <div className="broadcast-chip">
+              <Users size={14} />
+              אפשר לפתוח תוצאות אישיות ולדפדף שאלה-שאלה
+            </div>
+          ) : null}
         </div>
       </section>
 
-      <SurveyResultsList questionResults={summary.survey.questionResults} />
-
       <section className="stage-panel-soft rounded-[34px] p-6 sm:p-8">
         <div className="flex flex-wrap gap-3">
-          <Link href="/results" className="hero-button-primary rounded-full px-5 py-3">
-            לצפייה בתוצאות החיות
-          </Link>
+          {hasQuestionResults ? (
+            <button
+              data-summary-open-results
+              type="button"
+              onClick={() => setResultsOpen(true)}
+              className="hero-button-primary rounded-full px-5 py-3"
+            >
+              הצגת התוצאות
+            </button>
+          ) : null}
+          <button
+            data-summary-new-game
+            type="button"
+            onClick={restartGame}
+            className="hero-button-secondary rounded-full px-5 py-3"
+          >
+            משחק חדש
+          </button>
           <Link href="/gallery" className="hero-button-secondary rounded-full px-5 py-3">
             <span className="inline-flex items-center gap-2">
               <Camera size={16} />
@@ -128,6 +175,14 @@ export function SummaryPage() {
           </Link>
         </div>
       </section>
+
+      <SummaryResultsSheet
+        open={resultsOpen}
+        onClose={() => setResultsOpen(false)}
+        questionResults={summary.survey.questionResults}
+      />
+
+      <SummaryExtraPhotoForm />
     </div>
   );
 }

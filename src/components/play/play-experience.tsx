@@ -12,10 +12,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
+import { LiveAnswerResultsChart } from "@/components/play/live-answer-results-chart";
+import { FestiveBurst } from "@/components/shared/festive-burst";
 import { useSound } from "@/components/shared/sound-provider";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
+import {
+  getFestiveCue,
+  type FestiveCue,
+  type FestiveEventName,
+} from "@/lib/game/festive-feedback";
 import {
   getMissionProgress,
   getParticipantVoice,
@@ -23,13 +31,16 @@ import {
   getQuestionProgress,
 } from "@/lib/game/player-experience";
 import { getMissionMap, getQuestionMap } from "@/lib/game/run-plan";
-import type { OptionId, SessionSnapshot } from "@/lib/types";
+import type { OptionId, SessionSnapshot, SurveyQuestionResult } from "@/lib/types";
 import { compressForUpload } from "@/lib/utils/image-upload";
 import {
   clearStoredPlayerId,
+  clearStoredSessionSnapshot,
   getPendingUploads,
   getStoredPlayerId,
+  getStoredSessionSnapshot,
   setPendingUploads,
+  setStoredSessionSnapshot,
   type PendingUpload,
 } from "@/lib/utils/local-session";
 
@@ -67,12 +78,44 @@ async function postJson<T>(url: string, body: unknown) {
   return (await response.json()) as T;
 }
 
+function scrollToViewportTop() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const scrollingElement =
+    document.scrollingElement || document.documentElement || document.body;
+
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  if (scrollingElement && "scrollTop" in scrollingElement) {
+    scrollingElement.scrollTop = 0;
+  }
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+function blurActiveElement() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
 const OPTION_LETTERS: Record<OptionId, string> = {
   a: "א",
   b: "ב",
   c: "ג",
   d: "ד",
 };
+
+const PENDING_LIVE_RESULTS_MESSAGE =
+  "הבחירה נקלטה, המתינו לטעינת גרף הנתונים בלייב";
+const CONFIRMED_LIVE_RESULTS_MESSAGE =
+  "הבחירה נקלטה. גרף הנתונים בלייב מתעדכן ממש עכשיו.";
 
 function getAnswerVisualMeta({
   optionId,
@@ -85,6 +128,7 @@ function getAnswerVisualMeta({
 }) {
   if (confirmedOptionId === optionId) {
     return {
+      state: "confirmed" as const,
       badgeText: "נשמר",
       buttonClassName:
         "border-[#9fe1ff]/60 bg-[linear-gradient(180deg,rgba(20,82,132,0.62),rgba(7,37,62,0.78))] text-white shadow-[0_24px_50px_rgba(74,176,255,0.22)]",
@@ -96,6 +140,7 @@ function getAnswerVisualMeta({
 
   if (selectedOptionId === optionId) {
     return {
+      state: "pending" as const,
       badgeText: "נבחרה",
       buttonClassName:
         "border-[#7ad7ff]/46 bg-[linear-gradient(180deg,rgba(16,68,110,0.56),rgba(7,28,48,0.72))] text-white shadow-[0_18px_40px_rgba(74,176,255,0.16)]",
@@ -106,6 +151,7 @@ function getAnswerVisualMeta({
   }
 
   return {
+    state: "idle" as const,
     badgeText: OPTION_LETTERS[optionId],
     buttonClassName:
       "border-white/10 bg-white/5 text-white hover:-translate-y-0.5 hover:border-[#84d6ff]/30 hover:bg-white/8",
@@ -130,13 +176,48 @@ export function PlayExperience() {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<OptionId | null>(null);
   const [confirmedOptionId, setConfirmedOptionId] = useState<OptionId | null>(null);
+  const [liveQuestionResult, setLiveQuestionResult] =
+    useState<SurveyQuestionResult | null>(null);
   const [awaitingContinue, setAwaitingContinue] = useState(false);
   const [pendingSessionAfterReview, setPendingSessionAfterReview] =
     useState<SessionSnapshot | null>(null);
+  const [festiveCue, setFestiveCue] = useState<FestiveCue | null>(null);
   const startedAtRef = useRef<number>(Date.now());
+  const busyRef = useRef(false);
+  const awaitingContinueRef = useRef(false);
+  const pendingSessionAfterReviewRef = useRef<SessionSnapshot | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
+  const missionFileInputRef = useRef<HTMLInputElement | null>(null);
+  const festiveSequenceRef = useRef<Record<FestiveEventName, number>>({
+    "answer-saved": 0,
+    "step-transition": 0,
+    "photo-chosen": 0,
+    "mission-uploaded": 0,
+    "summary-uploaded": 0,
+    "summary-finished": 0,
+  });
+  const didMountStepRef = useRef(false);
+  const didAnnounceClosedSurveyRef = useRef(false);
+
+  const showFestiveCue = (eventName: FestiveEventName) => {
+    const iteration = festiveSequenceRef.current[eventName];
+    festiveSequenceRef.current[eventName] = iteration + 1;
+    setFestiveCue(getFestiveCue(eventName, iteration));
+  };
 
   useHeartbeat(playerId);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  useEffect(() => {
+    awaitingContinueRef.current = awaitingContinue;
+  }, [awaitingContinue]);
+
+  useEffect(() => {
+    pendingSessionAfterReviewRef.current = pendingSessionAfterReview;
+  }, [pendingSessionAfterReview]);
 
   useEffect(() => {
     const stored = getStoredPlayerId();
@@ -145,16 +226,37 @@ export function PlayExperience() {
       return;
     }
 
+    const cachedSession = getStoredSessionSnapshot();
     setPlayerId(stored);
+    if (cachedSession?.player.id === stored) {
+      setSession(cachedSession);
+      setGlobalSoundEnabled(cachedSession.settings.globalSoundEnabled);
+      setLoading(false);
+    }
+
     void fetchSession(stored)
       .then((nextSession) => {
+        if (
+          busyRef.current ||
+          awaitingContinueRef.current ||
+          pendingSessionAfterReviewRef.current
+        ) {
+          return;
+        }
+
         setSession(nextSession);
+        setStoredSessionSnapshot(nextSession);
         setGlobalSoundEnabled(nextSession.settings.globalSoundEnabled);
       })
       .catch(() => {
         clearStoredPlayerId();
+        clearStoredSessionSnapshot();
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (cachedSession?.player.id !== stored) {
+          setLoading(false);
+        }
+      });
   }, [setGlobalSoundEnabled]);
 
   const currentStepKey =
@@ -164,14 +266,24 @@ export function PlayExperience() {
         ? `mission:${session.currentStep.missionId}`
         : "idle";
 
+  useLayoutEffect(() => {
+    if (currentStepKey === "idle") {
+      return;
+    }
+
+    scrollToViewportTop();
+  }, [currentStepKey]);
+
   useEffect(() => {
     startedAtRef.current = Date.now();
     setCaption("");
     setNewPeopleMet("");
     setSelectedOptionId(null);
     setConfirmedOptionId(null);
+    setLiveQuestionResult(null);
     setAwaitingContinue(false);
     setPendingSessionAfterReview(null);
+    setFestiveCue(null);
 
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
@@ -191,11 +303,19 @@ export function PlayExperience() {
   }, []);
 
   const advanceAfterOutcome = (nextSession: SessionSnapshot) => {
-    setSession(nextSession);
+    blurActiveElement();
+    flushSync(() => {
+      setSession(nextSession);
+    });
+    setStoredSessionSnapshot(nextSession);
 
     if (nextSession.player.completed) {
       play("celebration");
       router.push("/summary");
+      return;
+    }
+
+    if (nextSession.resultsPromptRequired) {
       return;
     }
 
@@ -229,6 +349,7 @@ export function PlayExperience() {
 
           setPendingUploads(queue.filter((entry) => entry.id !== item.id));
           setQueueMessage("ההעלאה שנשמרה במכשיר נשלחה עכשיו בהצלחה.");
+          showFestiveCue("mission-uploaded");
           play("upload");
           advanceAfterOutcome(result.session);
         } catch {
@@ -261,6 +382,37 @@ export function PlayExperience() {
       ? missionMap.get(currentStep.missionId) ?? null
       : null;
 
+  useEffect(() => {
+    if (!currentStep || currentStepKey === "idle") {
+      return;
+    }
+
+    if (!didMountStepRef.current) {
+      didMountStepRef.current = true;
+      return;
+    }
+
+    const iteration = festiveSequenceRef.current["step-transition"];
+    festiveSequenceRef.current["step-transition"] = iteration + 1;
+    setFestiveCue(getFestiveCue("step-transition", iteration));
+  }, [currentStep, currentStepKey]);
+
+  useEffect(() => {
+    if (!session?.resultsPromptRequired) {
+      didAnnounceClosedSurveyRef.current = false;
+      return;
+    }
+
+    if (didAnnounceClosedSurveyRef.current) {
+      return;
+    }
+
+    didAnnounceClosedSurveyRef.current = true;
+    setFestiveCue(getFestiveCue("summary-finished", 0));
+    play("celebration");
+    scrollToViewportTop();
+  }, [play, session?.resultsPromptRequired]);
+
   const progressValue = useMemo(() => {
     if (!session) {
       return 0;
@@ -289,9 +441,13 @@ export function PlayExperience() {
       return;
     }
 
+    const nextSession = pendingSessionAfterReview;
+    blurActiveElement();
     setPendingSessionAfterReview(null);
     setAwaitingContinue(false);
-    advanceAfterOutcome(pendingSessionAfterReview);
+    window.setTimeout(() => {
+      advanceAfterOutcome(nextSession);
+    }, 0);
   };
 
   const updatePreviewFromFile = (file: File | null) => {
@@ -310,13 +466,22 @@ export function PlayExperience() {
     const nextPreviewUrl = URL.createObjectURL(file);
     previewObjectUrlRef.current = nextPreviewUrl;
     setPreviewUrl(nextPreviewUrl);
+    showFestiveCue("photo-chosen");
+    play("photo");
   };
 
   const skipCurrent = async () => {
-    if (!currentStep || !session || !playerId || busy || awaitingContinue) {
+    if (
+      !currentStep ||
+      !session ||
+      !playerId ||
+      busyRef.current ||
+      awaitingContinueRef.current
+    ) {
       return;
     }
 
+    busyRef.current = true;
     setBusy(true);
     setError(null);
 
@@ -356,16 +521,28 @@ export function PlayExperience() {
         caughtError instanceof Error ? caughtError.message : null;
       setError(serverMessage ?? "לא הצלחנו להמשיך כרגע. נסו שוב.");
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const answerQuestion = async (optionId: OptionId) => {
-    if (!currentQuestion || !session || !playerId || busy || awaitingContinue) {
+    if (
+      !currentQuestion ||
+      !session ||
+      !playerId ||
+      busyRef.current ||
+      awaitingContinueRef.current
+    ) {
       return;
     }
 
-    setSelectedOptionId(optionId);
+    busyRef.current = true;
+    flushSync(() => {
+      setSelectedOptionId(optionId);
+      setConfirmedOptionId(null);
+      setLiveQuestionResult(null);
+    });
     setBusy(true);
     setError(null);
     play("click");
@@ -377,6 +554,7 @@ export function PlayExperience() {
           status: "correct" | "wrong" | "skipped";
           rankImproved: boolean;
           pointsAwarded: number;
+          liveQuestionResult: SurveyQuestionResult | null;
         };
       }>("/api/game/answer", {
         playerId,
@@ -388,10 +566,14 @@ export function PlayExperience() {
       });
 
       setConfirmedOptionId(optionId);
+      setLiveQuestionResult(result.outcome.liveQuestionResult);
       setPendingSessionAfterReview(result.session);
       setAwaitingContinue(true);
+      showFestiveCue("answer-saved");
+      play(result.outcome.rankImproved ? "rankUp" : "points");
     } catch (caughtError) {
       setConfirmedOptionId(null);
+      setLiveQuestionResult(null);
       setAwaitingContinue(false);
       setPendingSessionAfterReview(null);
       setError(
@@ -400,16 +582,26 @@ export function PlayExperience() {
           : "לא הצלחנו לשמור את הבחירה כרגע. נסו שוב.",
       );
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const submitMission = async () => {
-    if (!currentMission || !session || !playerId || busy || !selectedFile) {
-      setError("צריך לבחור תמונה לפני שממשיכים.");
+    if (
+      !currentMission ||
+      !session ||
+      !playerId ||
+      busyRef.current ||
+      !selectedFile
+    ) {
+      if (!selectedFile) {
+        setError("צריך לבחור תמונה לפני שממשיכים.");
+      }
       return;
     }
 
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     let compressed:
@@ -440,7 +632,11 @@ export function PlayExperience() {
         skipped: false,
       });
 
+      showFestiveCue("mission-uploaded");
       play("upload");
+      if (result.outcome.rankImproved) {
+        play("rankUp");
+      }
       setQueueMessage(null);
       advanceAfterOutcome(result.session);
     } catch (caughtError) {
@@ -476,6 +672,7 @@ export function PlayExperience() {
       );
       setError("התמונה נשמרה במכשיר ותישלח אוטומטית ברגע שהחיבור יחזור.");
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -554,6 +751,71 @@ export function PlayExperience() {
         </div>
       ) : null}
 
+      {session.resultsPromptRequired ? (
+        <motion.section
+          key="survey-results-prompt"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-play-results-closed
+          className="stage-panel rounded-[36px] p-5 sm:p-8"
+        >
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-[var(--text-dim)]">
+                {"\u05D4\u05E1\u05E7\u05E8 \u05E0\u05E1\u05D2\u05E8 \u05DC\u05DE\u05E2\u05E0\u05D4 \u05D7\u05D3\u05E9"}
+              </p>
+              <h2 className="mt-2 font-display text-3xl text-white sm:text-4xl">
+                {"\u05D4\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05D4\u05E1\u05D5\u05E4\u05D9\u05D5\u05EA \u05DB\u05D1\u05E8 \u05D1\u05D0\u05D5\u05D5\u05D9\u05E8"}
+              </h2>
+            </div>
+            <div className="broadcast-chip">
+              <Sparkles size={16} />
+              {"\u05DE\u05E2\u05DB\u05E9\u05D9\u05D5 \u05E8\u05D5\u05D0\u05D9\u05DD \u05D0\u05EA \u05D4\u05D0\u05D7\u05D5\u05D6\u05D9\u05DD \u05D4\u05E8\u05E9\u05DE\u05D9\u05D9\u05DD"}
+            </div>
+          </div>
+
+          <p className="max-w-3xl text-xl leading-relaxed text-white">
+            {"\u05E1\u05D9\u05D9\u05DE\u05EA \u05D0\u05EA \u05D4\u05DE\u05E1\u05DA \u05D4\u05E0\u05D5\u05DB\u05D7\u05D9. \u05DB\u05E2\u05DB\u05E9\u05D9\u05D5 \u05D0\u05E4\u05E9\u05E8 \u05DC\u05E2\u05D1\u05D5\u05E8 \u05DC\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05D4\u05E1\u05D5\u05E4\u05D9\u05D5\u05EA \u05D0\u05D5 \u05DC\u05E1\u05D9\u05D5\u05DD \u05D0\u05EA \u05D4\u05DE\u05E9\u05D7\u05E7 \u05E9\u05DC\u05DA \u05D5\u05DC\u05D4\u05DE\u05E9\u05D9\u05DA \u05DC\u05D4\u05D5\u05E1\u05D9\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D5\u05EA \u05D1\u05DE\u05D4\u05DC\u05DA \u05D4\u05E2\u05E8\u05D1."}
+          </p>
+
+          <div className="mt-4 min-h-[5.5rem] sm:min-h-[6rem]">
+            <FestiveBurst cue={festiveCue} scopeKey="survey-results-prompt" />
+          </div>
+
+          {session.finalSurveySnapshot ? (
+            <div className="mt-4 flex flex-wrap gap-3 text-sm">
+              <div className="broadcast-chip">
+                <Users size={16} />
+                {session.finalSurveySnapshot.totalParticipants}{" "}
+                {"\u05DE\u05E9\u05EA\u05EA\u05E4\u05D9\u05DD"}
+              </div>
+              <div className="broadcast-chip">
+                {session.finalSurveySnapshot.questionResults.length}{" "}
+                {"\u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E0\u05E2\u05DC\u05D5"}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/results")}
+              className="hero-button-primary inline-flex items-center gap-2 rounded-full px-5 py-3"
+            >
+              <ArrowLeft size={16} />
+              {"\u05DC\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05D4\u05E1\u05D5\u05E4\u05D9\u05D5\u05EA"}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/summary")}
+              className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-5 py-3"
+            >
+              {"\u05DC\u05DE\u05E1\u05DA \u05D4\u05E1\u05D9\u05D5\u05DD \u05E9\u05DC\u05D9"}
+            </button>
+          </div>
+        </motion.section>
+      ) : null}
+
       {currentQuestion ? (
         <motion.section
           key={currentStepKey}
@@ -577,6 +839,10 @@ export function PlayExperience() {
             {currentQuestion.prompt}
           </p>
 
+          <div className="mt-4 min-h-[5.5rem] sm:min-h-[6rem]">
+            <FestiveBurst cue={festiveCue} scopeKey={currentStepKey} />
+          </div>
+
           <div className="mt-8 grid gap-3">
             {currentQuestion.options.map((option) => {
               const visualMeta = getAnswerVisualMeta({
@@ -584,6 +850,12 @@ export function PlayExperience() {
                 selectedOptionId,
                 confirmedOptionId,
               });
+              const liveResultsHelperText =
+                visualMeta.state === "pending"
+                  ? PENDING_LIVE_RESULTS_MESSAGE
+                  : visualMeta.state === "confirmed"
+                    ? CONFIRMED_LIVE_RESULTS_MESSAGE
+                    : visualMeta.helperText;
 
               return (
                 <button
@@ -591,33 +863,46 @@ export function PlayExperience() {
                   type="button"
                   onClick={() => answerQuestion(option.id)}
                   disabled={busy || awaitingContinue}
-                  aria-pressed={selectedOptionId === option.id}
+                  aria-pressed={
+                    selectedOptionId === option.id || confirmedOptionId === option.id
+                  }
+                  data-answer-option={option.id}
+                  data-answer-state={visualMeta.state}
                   className={`flex w-full items-start justify-between gap-4 rounded-[28px] border px-5 py-5 text-right transition ${visualMeta.buttonClassName}`}
                 >
-                  <div className="space-y-2 text-right">
-                    <span className="block text-lg leading-relaxed">{option.label}</span>
-                    {visualMeta.helperText ? (
-                      <span className={`block text-sm ${visualMeta.helperClassName}`}>
-                        {visualMeta.helperText}
-                      </span>
-                    ) : null}
-                  </div>
                   <span
                     className={`inline-flex min-w-[82px] shrink-0 justify-center rounded-full px-3 py-1.5 text-sm font-semibold ${visualMeta.badgeClassName}`}
                   >
                     {visualMeta.badgeText}
                   </span>
+                  <div className="flex-1 space-y-2 text-right">
+                    <span className="block text-lg leading-relaxed">{option.label}</span>
+                    {liveResultsHelperText ? (
+                      <span
+                        data-pending-live-results-message={
+                          visualMeta.state === "pending" ? "true" : undefined
+                        }
+                        className={`block text-sm ${visualMeta.helperClassName}`}
+                      >
+                        {liveResultsHelperText}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          {confirmedOptionId ? (
+          {liveQuestionResult ? (
+            <LiveAnswerResultsChart questionResult={liveQuestionResult} />
+          ) : null}
+
+          {confirmedOptionId && !liveQuestionResult ? (
             <div
               aria-live="polite"
               className="mt-6 rounded-[24px] border border-[#92dcff]/24 bg-[#092742] px-4 py-4 text-sm text-[#d8f4ff] sm:text-base"
             >
-              הבחירה נשמרה. אפשר להמשיך לרגע הבא.
+              הבחירה נשמרה. ממשיכים יחד לרגע הבא.
             </div>
           ) : null}
 
@@ -664,7 +949,7 @@ export function PlayExperience() {
             </div>
             <div className="broadcast-chip">
               <Camera size={16} />
-              mission capture
+              רגע צילום חי
             </div>
           </div>
 
@@ -675,9 +960,41 @@ export function PlayExperience() {
             {voice.photoHint}
           </p>
 
+          <div className="mt-4 min-h-[5.5rem] sm:min-h-[6rem]">
+            <FestiveBurst cue={festiveCue} scopeKey={currentStepKey} />
+          </div>
+
           <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-4">
-              <div className="rounded-[28px] border border-white/10 bg-white/6 p-3">
+              <input
+                ref={missionFileInputRef}
+                data-mission-photo-input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={busy}
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  updatePreviewFromFile(file);
+                  event.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                data-mission-photo-picker
+                aria-label={selectedFile ? voice.replacePhotoLabel : voice.choosePhotoLabel}
+                disabled={busy}
+                onClick={(event) => {
+                  event.currentTarget.blur();
+                  missionFileInputRef.current?.click();
+                }}
+                className={`block w-full rounded-[28px] border bg-white/6 p-3 text-inherit transition ${
+                  busy
+                    ? "cursor-progress border-white/10 opacity-80"
+                    : "cursor-pointer border-white/10 hover:border-[#84d6ff]/35 hover:bg-white/8"
+                }`}
+              >
                 <div className="relative h-[260px] overflow-hidden rounded-[22px] bg-[#08172d] sm:h-[320px]">
                   {previewUrl ? (
                     <Image
@@ -704,22 +1021,7 @@ export function PlayExperience() {
                     </div>
                   ) : null}
                 </div>
-              </div>
-
-              <label className="hero-button-secondary inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-[22px] px-5 text-white">
-                <Camera size={18} />
-                {selectedFile ? voice.replacePhotoLabel : voice.choosePhotoLabel}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    updatePreviewFromFile(file);
-                  }}
-                />
-              </label>
+              </button>
             </div>
 
             <div className="space-y-4">

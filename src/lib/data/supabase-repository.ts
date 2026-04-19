@@ -5,6 +5,10 @@ import { nanoid } from "nanoid";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  getSafeIntroText,
+  normalizeAdminSettings,
+} from "@/lib/content/admin-settings";
+import {
   buildSeedAdminSettingsRow,
   buildSeedMissionRows,
   buildSeedQuestionRows,
@@ -24,29 +28,49 @@ import {
 import {
   assertPlayerStep,
   appendEvent,
+  buildAdminPlayerMonitor,
+  buildFinalSystemBanner,
   buildLeaderboard,
+  buildLiveSurveyOverview,
   buildSessionSnapshot,
   buildSummarySnapshot,
   buildSurveyResultsSnapshot,
+  createDefaultSurveyRuntimeState,
+  createFrozenSurveySnapshot,
+  deriveHostAnnouncementState,
+  FINAL_RESULTS_PUBLISHED_MESSAGE,
+  getCurrentPlayerStep,
   getPlayerRank,
+  getSurveyRuntimePhase,
   hasCompletedAllPhotoMissions,
+  isPlayerActive,
+  normalizeSurveyRuntimeState,
+  shouldAllowCurrentStepCompletionAfterClosure,
 } from "@/lib/data/helpers";
 import {
   EXTRA_GALLERY_MISSION_ID,
   EXTRA_GALLERY_MISSION_TITLE,
 } from "@/lib/game/photo-gallery";
+import { filterPublicRecentEvents } from "@/lib/game/live-event-feed";
 import {
   getPlayerDisplayName,
   normalizeParticipantType,
   pickByParticipantType,
 } from "@/lib/game/player-experience";
 import { calculateMissionScore, calculateQuestionScore } from "@/lib/game/scoring";
-import { buildRunSteps, shuffleArray } from "@/lib/game/run-plan";
+import { buildLiveQuestionResult } from "@/lib/game/survey-results";
+import {
+  buildRunSteps,
+  getOrderedMissionIds,
+  getOrderedQuestionIds,
+} from "@/lib/game/run-plan";
 import type {
   AdminSettings,
   AdminSettingsPatch,
   AdminSnapshot,
   AdjustPlayerPointsInput,
+  CreateHostAnnouncementInput,
+  HostAnnouncementRecord,
   LocalDatabase,
   PhotoModerationInput,
   PlayerAnswerRecord,
@@ -60,9 +84,12 @@ import type {
   SubmitAnswerInput,
   SubmitMissionInput,
   SummarySnapshot,
+  SurveyQuestionResult,
+  SurveyRuntimeState,
 } from "@/lib/types";
 
 const PHOTO_BUCKET = "mission-photos";
+const SURVEY_RUNTIME_ROW_ID = "default";
 
 type ActionOutcome = {
   pointsAwarded: number;
@@ -71,6 +98,7 @@ type ActionOutcome = {
   rankImproved: boolean;
   completed: boolean;
   status: "correct" | "wrong" | "skipped" | "uploaded";
+  liveQuestionResult: SurveyQuestionResult | null;
 };
 
 type GameContent = {
@@ -107,15 +135,11 @@ function getNowIso() {
 }
 
 function questionOrder(questions: Question[]) {
-  return shuffleArray(questions.map((question) => question.id));
+  return getOrderedQuestionIds(questions);
 }
 
 function missionOrder(missions: PhotoMission[]) {
-  const standard = missions
-    .filter((mission) => !mission.isFinal)
-    .map((mission) => mission.id);
-  const finalMission = missions.find((mission) => mission.isFinal)?.id;
-  return [...standard, finalMission].filter(Boolean) as string[];
+  return getOrderedMissionIds(missions);
 }
 
 function mapSettings(row?: Record<string, unknown> | null): AdminSettings {
@@ -124,7 +148,7 @@ function mapSettings(row?: Record<string, unknown> | null): AdminSettings {
   }
 
   return {
-    introText: String(row.intro_text ?? defaultAdminSettings.introText),
+    introText: getSafeIntroText(row.intro_text),
     prizeLabels: {
       first: String(row.prize_first ?? defaultAdminSettings.prizeLabels.first),
       second: String(row.prize_second ?? defaultAdminSettings.prizeLabels.second),
@@ -210,6 +234,47 @@ function mapEvent(row: Record<string, unknown>) {
     playerName: row.player_name ? String(row.player_name) : null,
     createdAt: String(row.created_at),
   };
+}
+
+function mapHostAnnouncement(row: Record<string, unknown>): HostAnnouncementRecord {
+  return {
+    id: String(row.id),
+    message: String(row.message),
+    scheduledFor: String(row.scheduled_for),
+    endsMode: row.ends_mode as HostAnnouncementRecord["endsMode"],
+    endsAt: row.ends_at ? String(row.ends_at) : null,
+    clearedAt: row.cleared_at ? String(row.cleared_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapSurveyRuntime(row?: Record<string, unknown> | null): SurveyRuntimeState {
+  if (!row) {
+    return createDefaultSurveyRuntimeState();
+  }
+
+  return normalizeSurveyRuntimeState({
+    phase:
+      row.phase === "closing" || row.phase === "finalized" ? row.phase : "live",
+    closedAt: row.closed_at ? String(row.closed_at) : null,
+    finalizedAt: row.finalized_at ? String(row.finalized_at) : null,
+    finalResultsSnapshot: row.final_results_snapshot
+      ? (row.final_results_snapshot as SurveyRuntimeState["finalResultsSnapshot"])
+      : null,
+    finalBannerMessage: row.final_banner_message
+      ? String(row.final_banner_message)
+      : null,
+    gracePlayers: Array.isArray(row.grace_players)
+      ? (row.grace_players as SurveyRuntimeState["gracePlayers"])
+      : [],
+  });
+}
+
+function buildHostAnnouncementSummary(announcement: { message: string }) {
+  return announcement.message.length > 48
+    ? `${announcement.message.slice(0, 45).trim()}...`
+    : announcement.message;
 }
 
 function isDuplicateInsertError(error: unknown) {
@@ -343,6 +408,39 @@ async function fetchPlayers(client: SupabaseClient) {
   return (data ?? []).map((row) => mapPlayer(row as Record<string, unknown>));
 }
 
+async function ensureSurveyRuntimeRow(client: SupabaseClient) {
+  const { data, error } = await client
+    .from("survey_runtime_state")
+    .select("*")
+    .eq("id", SURVEY_RUNTIME_ROW_ID)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (data) {
+    return mapSurveyRuntime(data as Record<string, unknown>);
+  }
+
+  const defaults = createDefaultSurveyRuntimeState();
+  const { error: insertError } = await client.from("survey_runtime_state").insert({
+    id: SURVEY_RUNTIME_ROW_ID,
+    phase: defaults.phase,
+    closed_at: defaults.closedAt,
+    finalized_at: defaults.finalizedAt,
+    final_results_snapshot: defaults.finalResultsSnapshot,
+    final_banner_message: defaults.finalBannerMessage,
+    grace_players: defaults.gracePlayers,
+  });
+
+  if (insertError) {
+    throw insertError;
+  }
+
+  return defaults;
+}
+
 async function fetchSettings(client: SupabaseClient) {
   await ensureSettingsRow(client);
   const { data, error } = await client
@@ -372,6 +470,52 @@ async function fetchAnswers(client: SupabaseClient, playerId: string) {
   return (data ?? []).map((row) => mapAnswer(row as Record<string, unknown>));
 }
 
+async function fetchAllAnswers(client: SupabaseClient) {
+  const { data, error } = await client
+    .from("player_answers")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapAnswer(row as Record<string, unknown>));
+}
+
+async function fetchQuestionAnswers(
+  client: SupabaseClient,
+  questionId: string,
+) {
+  const { data, error } = await client
+    .from("player_answers")
+    .select("*")
+    .eq("kind", "question")
+    .eq("content_id", questionId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapAnswer(row as Record<string, unknown>));
+}
+
+async function fetchSurveyRuntime(client: SupabaseClient) {
+  await ensureSurveyRuntimeRow(client);
+  const { data, error } = await client
+    .from("survey_runtime_state")
+    .select("*")
+    .eq("id", SURVEY_RUNTIME_ROW_ID)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapSurveyRuntime(data as Record<string, unknown>);
+}
+
 async function fetchPlayer(client: SupabaseClient, playerId: string) {
   const { data, error } = await client
     .from("players")
@@ -386,11 +530,51 @@ async function fetchPlayer(client: SupabaseClient, playerId: string) {
   return mapPlayer(data as Record<string, unknown>);
 }
 
+async function fetchHostAnnouncements(client: SupabaseClient) {
+  const { data, error } = await client
+    .from("host_announcements")
+    .select("*")
+    .order("scheduled_for", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapHostAnnouncement(row as Record<string, unknown>));
+}
+
+async function fetchHostAnnouncement(
+  client: SupabaseClient,
+  hostAnnouncementId: string,
+) {
+  const { data, error } = await client
+    .from("host_announcements")
+    .select("*")
+    .eq("id", hostAnnouncementId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapHostAnnouncement(data as Record<string, unknown>);
+}
+
 async function fetchPublicDb(client: SupabaseClient): Promise<LocalDatabase> {
-  const [players, settings, content, photosResponse, eventsResponse] = await Promise.all([
+  const [
+    players,
+    settings,
+    content,
+    hostAnnouncements,
+    surveyRuntime,
+    photosResponse,
+    eventsResponse,
+  ] = await Promise.all([
     fetchPlayers(client),
     fetchSettings(client),
     fetchGameContent(client),
+    fetchHostAnnouncements(client),
+    fetchSurveyRuntime(client),
     client.from("photo_uploads").select("*"),
     client.from("game_events").select("*").order("created_at", { ascending: false }),
   ]);
@@ -404,7 +588,7 @@ async function fetchPublicDb(client: SupabaseClient): Promise<LocalDatabase> {
   }
 
   return {
-    settings,
+    settings: normalizeAdminSettings(settings),
     players,
     answers: [],
     photos: (photosResponse.data ?? []).map((row) =>
@@ -413,8 +597,10 @@ async function fetchPublicDb(client: SupabaseClient): Promise<LocalDatabase> {
     events: (eventsResponse.data ?? []).map((row) =>
       mapEvent(row as Record<string, unknown>),
     ),
+    hostAnnouncements,
     questions: content.questions,
     missions: content.missions,
+    surveyRuntime,
   };
 }
 
@@ -480,22 +666,106 @@ async function uploadDataUrl(
 }
 
 async function fetchSessionDb(client: SupabaseClient, playerId: string) {
-  const [players, settings, content, player, answers] = await Promise.all([
+  const [players, settings, content, player, answers, surveyRuntime] = await Promise.all([
     fetchPlayers(client),
     fetchSettings(client),
     fetchGameContent(client),
     fetchPlayer(client, playerId),
     fetchAnswers(client, playerId),
+    fetchSurveyRuntime(client),
   ]);
 
   return {
-    settings,
+    settings: normalizeAdminSettings(settings),
     players,
     questions: content.questions,
     missions: content.missions,
     answers,
     player,
+    surveyRuntime,
   };
+}
+
+function getGracePlayersForSurveyClosure(players: PlayerRecord[]) {
+  return players.flatMap((player) => {
+    const currentStep = getCurrentPlayerStep(player);
+
+    if (player.completed || !currentStep || !isPlayerActive(player)) {
+      return [];
+    }
+
+    return [{ playerId: player.id, stepIndex: player.currentStepIndex }];
+  });
+}
+
+async function updateSurveyRuntimeRow(
+  client: SupabaseClient,
+  surveyRuntime: SurveyRuntimeState,
+) {
+  const { error } = await client
+    .from("survey_runtime_state")
+    .update({
+      phase: surveyRuntime.phase,
+      closed_at: surveyRuntime.closedAt,
+      finalized_at: surveyRuntime.finalizedAt,
+      final_results_snapshot: surveyRuntime.finalResultsSnapshot,
+      final_banner_message: surveyRuntime.finalBannerMessage,
+      grace_players: surveyRuntime.gracePlayers,
+    })
+    .eq("id", SURVEY_RUNTIME_ROW_ID);
+
+  if (error) {
+    throw error;
+  }
+
+  return surveyRuntime;
+}
+
+async function maybeFinalizeClosedSurveyRuntime(
+  client: SupabaseClient,
+  surveyRuntime: SurveyRuntimeState,
+) {
+  if (surveyRuntime.phase !== "closing" || surveyRuntime.gracePlayers.length > 0) {
+    return surveyRuntime;
+  }
+
+  const finalizedRuntime: SurveyRuntimeState = {
+    ...surveyRuntime,
+    phase: "finalized",
+    finalizedAt: surveyRuntime.finalizedAt ?? getNowIso(),
+  };
+
+  await updateSurveyRuntimeRow(client, finalizedRuntime);
+  return finalizedRuntime;
+}
+
+function assertSurveyStillAcceptsStep({
+  surveyRuntime,
+  playerId,
+  playerCurrentStepIndex,
+  submittedStepIndex,
+}: {
+  surveyRuntime: SurveyRuntimeState;
+  playerId: string;
+  playerCurrentStepIndex: number;
+  submittedStepIndex: number;
+}) {
+  if (surveyRuntime.phase === "finalized") {
+    throw new Error("התוצאות הסופיות כבר פורסמו. אי אפשר לענות יותר.");
+  }
+
+  if (
+    surveyRuntime.phase === "closing" &&
+    !shouldAllowCurrentStepCompletionAfterClosure({
+      phase: surveyRuntime.phase,
+      playerId,
+      playerCurrentStepIndex,
+      submittedStepIndex,
+      gracePlayers: surveyRuntime.gracePlayers,
+    })
+  ) {
+    throw new Error("הסקר נסגר והתוצאות הסופיות פורסמו.");
+  }
 }
 
 async function finalizeSupabaseRun(
@@ -617,7 +887,7 @@ export async function supabaseHeartbeat(playerId: string) {
 
 export async function supabaseGetSession(playerId: string): Promise<SessionSnapshot> {
   const client = getClient();
-  const { settings, players, questions, missions, player, answers } =
+  const { settings, players, questions, missions, player, answers, surveyRuntime } =
     await fetchSessionDb(client, playerId);
 
   return buildSessionSnapshot(
@@ -627,8 +897,10 @@ export async function supabaseGetSession(playerId: string): Promise<SessionSnaps
       answers,
       photos: [],
       events: [],
+      hostAnnouncements: [],
       questions,
       missions,
+      surveyRuntime,
     },
     player,
   );
@@ -636,7 +908,7 @@ export async function supabaseGetSession(playerId: string): Promise<SessionSnaps
 
 export async function supabaseGetSummary(playerId: string): Promise<SummarySnapshot> {
   const client = getClient();
-  const { settings, players, questions, missions, player, answers } =
+  const { settings, players, questions, missions, player, answers, surveyRuntime } =
     await fetchSessionDb(client, playerId);
 
   return buildSummarySnapshot(
@@ -646,8 +918,10 @@ export async function supabaseGetSummary(playerId: string): Promise<SummarySnaps
       answers,
       photos: [],
       events: [],
+      hostAnnouncements: [],
       questions,
       missions,
+      surveyRuntime,
     },
     player,
   );
@@ -655,7 +929,7 @@ export async function supabaseGetSummary(playerId: string): Promise<SummarySnaps
 
 export async function supabaseGetSurveyResults(playerId: string) {
   const client = getClient();
-  const { settings, players, questions, missions, player, answers } =
+  const { settings, players, questions, missions, player, answers, surveyRuntime } =
     await fetchSessionDb(client, playerId);
 
   return buildSurveyResultsSnapshot(
@@ -665,16 +939,93 @@ export async function supabaseGetSurveyResults(playerId: string) {
       answers,
       photos: [],
       events: [],
+      hostAnnouncements: [],
       questions,
       missions,
+      surveyRuntime,
     },
     player,
   );
 }
 
+export async function supabaseGetSurveyRuntime() {
+  const client = getClient();
+  return fetchSurveyRuntime(client);
+}
+
+export async function supabasePublishFinalSurveyResults() {
+  const client = getClient();
+  const [surveyRuntime, players, settings, content, answers] = await Promise.all([
+    fetchSurveyRuntime(client),
+    fetchPlayers(client),
+    fetchSettings(client),
+    fetchGameContent(client),
+    fetchAllAnswers(client),
+  ]);
+
+  if (surveyRuntime.phase !== "live") {
+    return surveyRuntime;
+  }
+
+  const closedAt = getNowIso();
+  const nextRuntime: SurveyRuntimeState = {
+    phase: "closing",
+    closedAt,
+    finalizedAt: null,
+    finalResultsSnapshot: createFrozenSurveySnapshot(
+      {
+        settings: normalizeAdminSettings(settings),
+        players,
+        answers,
+        photos: [],
+        events: [],
+        hostAnnouncements: [],
+        questions: content.questions,
+        missions: content.missions,
+        surveyRuntime,
+      },
+      closedAt,
+    ),
+    finalBannerMessage: FINAL_RESULTS_PUBLISHED_MESSAGE,
+    gracePlayers: getGracePlayersForSurveyClosure(players),
+  };
+
+  await updateSurveyRuntimeRow(client, nextRuntime);
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: 'פורסמו התוצאות הסופיות והסקר נסגר למענה חדש',
+    playerId: null,
+    playerName: null,
+  });
+
+  return maybeFinalizeClosedSurveyRuntime(client, nextRuntime);
+}
+
+export async function supabaseReopenSurveyToLive() {
+  const client = getClient();
+  const surveyRuntime = await fetchSurveyRuntime(client);
+
+  if (surveyRuntime.phase === "live") {
+    return surveyRuntime;
+  }
+
+  const nextRuntime = createDefaultSurveyRuntimeState();
+  await updateSurveyRuntimeRow(client, nextRuntime);
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: "הסקר הוחזר למצב חי ונפתח שוב למענה חדש",
+    playerId: null,
+    playerName: null,
+  });
+
+  return nextRuntime;
+}
+
 export async function supabaseGetPublicSnapshot(): Promise<PublicSnapshot> {
   const client = getClient();
   const db = await fetchPublicDb(client);
+  const hostState = deriveHostAnnouncementState(db.hostAnnouncements);
+  const surveyPhase = getSurveyRuntimePhase(db.surveyRuntime);
   return {
     settings: db.settings,
     totalParticipants: db.players.length,
@@ -687,7 +1038,16 @@ export async function supabaseGetPublicSnapshot(): Promise<PublicSnapshot> {
           new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
       )
       .slice(0, 12),
-    recentEvents: db.events.slice(0, 12),
+    recentEvents: filterPublicRecentEvents(db.events),
+    activeHostAnnouncement: hostState.active,
+    activeSystemBanner: buildFinalSystemBanner({
+      surveyRuntime: db.surveyRuntime,
+      activeHostAnnouncement: hostState.active,
+    }),
+    nextHostTransitionAt: hostState.nextTransitionAt,
+    surveyRuntime: db.surveyRuntime,
+    surveyPhase,
+    finalSurveySnapshot: db.surveyRuntime.finalResultsSnapshot,
   };
 }
 
@@ -800,11 +1160,12 @@ export async function supabaseSubmitAnswer(
   input: SubmitAnswerInput,
 ): Promise<{ session: SessionSnapshot; outcome: ActionOutcome }> {
   const client = getClient();
-  const [content, player, players, answers] = await Promise.all([
+  const [content, player, players, answers, surveyRuntime] = await Promise.all([
     fetchGameContent(client),
     fetchPlayer(client, input.playerId),
     fetchPlayers(client),
     fetchAnswers(client, input.playerId),
+    fetchSurveyRuntime(client),
   ]);
   const question = content.questions.find((entry) => entry.id === input.questionId);
 
@@ -817,6 +1178,12 @@ export async function supabaseSubmitAnswer(
   );
 
   if (existingAnswer) {
+    const liveQuestionResult = buildLiveQuestionResult({
+      question,
+      answers: await fetchQuestionAnswers(client, question.id),
+      playerId: player.id,
+    });
+
     return {
       session: await supabaseGetSession(input.playerId),
       outcome: {
@@ -826,6 +1193,7 @@ export async function supabaseSubmitAnswer(
         rankImproved: false,
         completed: player.completed,
         status: existingAnswer.status,
+        liveQuestionResult,
       },
     };
   }
@@ -834,10 +1202,17 @@ export async function supabaseSubmitAnswer(
     kind: "question",
     id: input.questionId,
   });
+  assertSurveyStillAcceptsStep({
+    surveyRuntime,
+    playerId: player.id,
+    playerCurrentStepIndex: player.currentStepIndex,
+    submittedStepIndex: input.stepIndex,
+  });
 
   const beforeRank = getPlayerRank(players, player.id);
   const breakdown = calculateQuestionScore({
-    isCorrect: !input.skipped && input.selectedOptionId === question.correctOptionId,
+    // The survey uses subjective community choices, so every non-skipped answer counts.
+    isCorrect: !input.skipped,
     skipped: input.skipped,
     responseMs: input.responseMs,
     previousStreak: player.comboStreak,
@@ -880,6 +1255,11 @@ export async function supabaseSubmitAnswer(
           rankImproved: false,
           completed: session.player.completed,
           status: duplicatedAnswer?.status ?? "skipped",
+          liveQuestionResult: buildLiveQuestionResult({
+            question,
+            answers: await fetchQuestionAnswers(client, question.id),
+            playerId: player.id,
+          }),
         },
       };
     }
@@ -954,6 +1334,18 @@ export async function supabaseSubmitAnswer(
     refreshedAnswers,
     content.missions,
   );
+  if (surveyRuntime.phase === "closing") {
+    const nextRuntime: SurveyRuntimeState = {
+      ...surveyRuntime,
+      gracePlayers: surveyRuntime.gracePlayers.filter(
+        (entry) =>
+          !(entry.playerId === player.id && entry.stepIndex === input.stepIndex),
+      ),
+    };
+
+    await updateSurveyRuntimeRow(client, nextRuntime);
+    await maybeFinalizeClosedSurveyRuntime(client, nextRuntime);
+  }
   const latestPlayers = await fetchPlayers(client);
   const afterRank = getPlayerRank(latestPlayers, player.id);
   const rankImproved = afterRank < beforeRank;
@@ -967,6 +1359,12 @@ export async function supabaseSubmitAnswer(
     });
   }
 
+  const liveQuestionResult = buildLiveQuestionResult({
+    question,
+    answers: await fetchQuestionAnswers(client, question.id),
+    playerId: player.id,
+  });
+
   return {
     session: await supabaseGetSession(input.playerId),
     outcome: {
@@ -976,6 +1374,7 @@ export async function supabaseSubmitAnswer(
       rankImproved,
       completed: finalizedPlayer.completed,
       status: breakdown.label,
+      liveQuestionResult,
     },
   };
 }
@@ -984,11 +1383,12 @@ export async function supabaseSubmitMission(
   input: SubmitMissionInput,
 ): Promise<{ session: SessionSnapshot; outcome: ActionOutcome }> {
   const client = getClient();
-  const [content, player, players, answers] = await Promise.all([
+  const [content, player, players, answers, surveyRuntime] = await Promise.all([
     fetchGameContent(client),
     fetchPlayer(client, input.playerId),
     fetchPlayers(client),
     fetchAnswers(client, input.playerId),
+    fetchSurveyRuntime(client),
   ]);
   const mission = content.missions.find((entry) => entry.id === input.missionId);
 
@@ -1010,6 +1410,7 @@ export async function supabaseSubmitMission(
         rankImproved: false,
         completed: player.completed,
         status: existingAnswer.status,
+        liveQuestionResult: null,
       },
     };
   }
@@ -1017,6 +1418,12 @@ export async function supabaseSubmitMission(
   assertPlayerStep(player, input.stepIndex, {
     kind: "mission",
     id: input.missionId,
+  });
+  assertSurveyStillAcceptsStep({
+    surveyRuntime,
+    playerId: player.id,
+    playerCurrentStepIndex: player.currentStepIndex,
+    submittedStepIndex: input.stepIndex,
   });
 
   if (!input.skipped && !input.photoUrl) {
@@ -1081,6 +1488,7 @@ export async function supabaseSubmitMission(
           rankImproved: false,
           completed: session.player.completed,
           status: duplicatedAnswer?.status ?? "skipped",
+          liveQuestionResult: null,
         },
       };
     }
@@ -1181,6 +1589,18 @@ export async function supabaseSubmitMission(
     refreshedAnswers,
     content.missions,
   );
+  if (surveyRuntime.phase === "closing") {
+    const nextRuntime: SurveyRuntimeState = {
+      ...surveyRuntime,
+      gracePlayers: surveyRuntime.gracePlayers.filter(
+        (entry) =>
+          !(entry.playerId === player.id && entry.stepIndex === input.stepIndex),
+      ),
+    };
+
+    await updateSurveyRuntimeRow(client, nextRuntime);
+    await maybeFinalizeClosedSurveyRuntime(client, nextRuntime);
+  }
   const latestPlayers = await fetchPlayers(client);
   const afterRank = getPlayerRank(latestPlayers, player.id);
   const rankImproved = afterRank < beforeRank;
@@ -1203,17 +1623,35 @@ export async function supabaseSubmitMission(
       rankImproved,
       completed: finalizedPlayer.completed,
       status: input.skipped ? "skipped" : "uploaded",
+      liveQuestionResult: null,
     },
   };
 }
 
 export async function supabaseGetAdminSnapshot(): Promise<AdminSnapshot> {
   const client = getClient();
-  const [settings, players, photos] = await Promise.all([
+  const [settings, players, photos, hostAnnouncements, surveyRuntime, content, answers] =
+    await Promise.all([
     fetchSettings(client),
     fetchPlayers(client),
     supabaseGetGallery(true),
+    fetchHostAnnouncements(client),
+    fetchSurveyRuntime(client),
+    fetchGameContent(client),
+    fetchAllAnswers(client),
   ]);
+  const hostState = deriveHostAnnouncementState(hostAnnouncements);
+  const db: LocalDatabase = {
+    settings: normalizeAdminSettings(settings),
+    players,
+    answers,
+    photos,
+    events: [],
+    hostAnnouncements,
+    questions: content.questions,
+    missions: content.missions,
+    surveyRuntime,
+  };
 
   return {
     settings,
@@ -1228,7 +1666,158 @@ export async function supabaseGetAdminSnapshot(): Promise<AdminSnapshot> {
     leaderboard: buildLeaderboard(players),
     photos,
     totalParticipants: players.length,
+    activeHostAnnouncement: hostState.active,
+    hostAnnouncements: hostState.announcements,
+    nextHostTransitionAt: hostState.nextTransitionAt,
+    surveyRuntime,
+    surveyPhase: surveyRuntime.phase,
+    finalizedAt: surveyRuntime.finalizedAt,
+    finalSurveySnapshot: surveyRuntime.finalResultsSnapshot,
+    liveSurveyOverview: buildLiveSurveyOverview(db),
+    playersFinishingCurrentStep: surveyRuntime.gracePlayers.length,
+    playerMonitor: buildAdminPlayerMonitor(db),
   };
+}
+
+export async function supabaseCreateHostAnnouncement(
+  input: CreateHostAnnouncementInput,
+) {
+  const client = getClient();
+  const now = getNowIso();
+  const announcement = {
+    id: nanoid(12),
+    message: input.message.trim(),
+    scheduled_for: input.scheduledFor,
+    ends_mode: input.endsMode,
+    ends_at: input.endsMode === "at_time" ? input.endsAt : null,
+    cleared_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const { error } = await client.from("host_announcements").insert(announcement);
+
+  if (error) {
+    throw error;
+  }
+
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message:
+      announcement.scheduled_for <= now
+        ? `המנחה שלח הודעה חיה לקהל: "${buildHostAnnouncementSummary(announcement)}"`
+        : `נקבעה הודעת מנחה מתוזמנת: "${buildHostAnnouncementSummary(announcement)}"`,
+    playerId: null,
+    playerName: null,
+  });
+
+  return fetchHostAnnouncement(client, announcement.id);
+}
+
+export async function supabaseActivateHostAnnouncementNow(
+  hostAnnouncementId: string,
+) {
+  const client = getClient();
+  const now = getNowIso();
+  const { error } = await client
+    .from("host_announcements")
+    .update({
+      scheduled_for: now,
+      cleared_at: null,
+      updated_at: now,
+    })
+    .eq("id", hostAnnouncementId);
+
+  if (error) {
+    throw error;
+  }
+
+  const announcement = await fetchHostAnnouncement(client, hostAnnouncementId);
+
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: `הופעלה עכשיו הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+    playerId: null,
+    playerName: null,
+  });
+
+  return announcement;
+}
+
+export async function supabaseStopHostAnnouncementNow(hostAnnouncementId: string) {
+  const client = getClient();
+  const now = getNowIso();
+  const { error } = await client
+    .from("host_announcements")
+    .update({
+      cleared_at: now,
+      updated_at: now,
+    })
+    .eq("id", hostAnnouncementId);
+
+  if (error) {
+    throw error;
+  }
+
+  const announcement = await fetchHostAnnouncement(client, hostAnnouncementId);
+
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: `הסתיימה הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+    playerId: null,
+    playerName: null,
+  });
+
+  return announcement;
+}
+
+export async function supabaseCancelHostAnnouncement(hostAnnouncementId: string) {
+  const client = getClient();
+  const now = getNowIso();
+  const { error } = await client
+    .from("host_announcements")
+    .update({
+      cleared_at: now,
+      updated_at: now,
+    })
+    .eq("id", hostAnnouncementId);
+
+  if (error) {
+    throw error;
+  }
+
+  const announcement = await fetchHostAnnouncement(client, hostAnnouncementId);
+
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: `בוטלה הודעת מנחה מתוזמנת: "${buildHostAnnouncementSummary(announcement)}"`,
+    playerId: null,
+    playerName: null,
+  });
+
+  return announcement;
+}
+
+export async function supabaseDeleteHostAnnouncement(hostAnnouncementId: string) {
+  const client = getClient();
+  const announcement = await fetchHostAnnouncement(client, hostAnnouncementId);
+  const { error } = await client
+    .from("host_announcements")
+    .delete()
+    .eq("id", hostAnnouncementId);
+
+  if (error) {
+    throw error;
+  }
+
+  await appendSupabaseEvent(client, {
+    type: "admin_update",
+    message: `נמחקה הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+    playerId: null,
+    playerName: null,
+  });
+
+  return announcement;
 }
 
 export async function supabaseUpdateSettings(settings: AdminSettingsPatch) {

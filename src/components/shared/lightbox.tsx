@@ -47,75 +47,87 @@ export function Lightbox({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#02142ccc] p-4 backdrop-blur-md [overscroll-behavior:contain]"
+          onClick={onClose}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#02142ce6] p-3 backdrop-blur-md [overscroll-behavior:contain] sm:p-4"
         >
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute left-4 top-4 rounded-full bg-white/16 p-2 text-white"
-            aria-label="סגירה"
-          >
-            <X size={22} />
-          </button>
-
-          {hasMultipleItems ? (
-            <button
-              type="button"
-              onClick={() =>
-                setActiveIndex((index) =>
-                  index === 0 ? items.length - 1 : index - 1,
-                )
-              }
-              className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/16 p-3 text-white"
-              aria-label="התמונה הקודמת"
-            >
-              <ArrowRight size={22} />
-            </button>
-          ) : null}
-
-          {hasMultipleItems ? (
-            <button
-              type="button"
-              onClick={() =>
-                setActiveIndex((index) =>
-                  index === items.length - 1 ? 0 : index + 1,
-                )
-              }
-              className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/16 p-3 text-white"
-              aria-label="התמונה הבאה"
-            >
-              <ArrowLeft size={22} />
-            </button>
-          ) : null}
-
           <motion.div
-            initial={{ scale: 0.92, opacity: 0.6 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.96, opacity: 0 }}
-            className="glass-panel relative w-full max-w-4xl overflow-hidden rounded-[28px] p-3"
+            initial={{ scale: 0.96, opacity: 0.6, y: 12 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.98, opacity: 0, y: 8 }}
+            onClick={(event) => event.stopPropagation()}
+            className="glass-panel relative w-full max-w-4xl overflow-hidden rounded-[28px] p-3 sm:p-4"
           >
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] bg-[#e9f5ff] sm:aspect-[16/10]">
-              <Image
-                src={current.src}
-                alt={current.alt}
-                fill
-                className="object-contain"
-                sizes="100vw"
-              />
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0 text-right">
+                {current.title ? (
+                  <p className="font-display text-lg text-white sm:text-xl">
+                    {current.title}
+                  </p>
+                ) : null}
+                {current.caption ? (
+                  <p className="mt-1 text-sm leading-6 text-[var(--text-soft)]">
+                    {current.caption}
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-white"
+                aria-label="סגירה"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <div className="px-3 pb-2 pt-4 text-right">
-              {current.title ? (
-                <p className="font-display text-lg text-[#0c2f61]">{current.title}</p>
-              ) : null}
-              {current.caption ? (
-                <p className="mt-1 text-sm text-[#44658f]">{current.caption}</p>
-              ) : null}
+
+            <div className="relative overflow-hidden rounded-[22px] bg-[#071427]">
+              <div className="relative aspect-[4/5] w-full sm:aspect-[16/10]">
+                <Image
+                  src={current.src}
+                  alt={current.alt}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                />
+              </div>
+
               {hasMultipleItems ? (
-                <p className="mt-3 text-xs text-[#5c7ca2]">
-                  תמונה {activeIndex + 1} מתוך {items.length}
-                </p>
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveIndex((index) =>
+                        index === 0 ? items.length - 1 : index - 1,
+                      )
+                    }
+                    className="absolute right-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#071427c9] text-white sm:right-4"
+                    aria-label="התמונה הקודמת"
+                  >
+                    <ArrowRight size={20} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveIndex((index) =>
+                        index === items.length - 1 ? 0 : index + 1,
+                      )
+                    }
+                    className="absolute left-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#071427c9] text-white sm:left-4"
+                    aria-label="התמונה הבאה"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                </>
               ) : null}
             </div>
+
+            {hasMultipleItems ? (
+              <p className="pt-3 text-center text-xs text-[var(--text-dim)]">
+                תמונה {activeIndex + 1} מתוך {items.length}
+              </p>
+            ) : null}
           </motion.div>
         </motion.div>
       ) : null}

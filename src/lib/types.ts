@@ -55,6 +55,59 @@ export type AdminSettingsPatch = {
   globalSoundEnabled?: boolean;
 };
 
+export type HostAnnouncementEndsMode = "until_next" | "at_time";
+
+export type HostAnnouncementStatus =
+  | "active"
+  | "scheduled"
+  | "ended"
+  | "cancelled";
+
+export type HostAnnouncementRecord = {
+  id: string;
+  message: string;
+  scheduledFor: string;
+  endsMode: HostAnnouncementEndsMode;
+  endsAt: string | null;
+  clearedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ActiveHostAnnouncement = {
+  id: string;
+  message: string;
+  startedAt: string;
+  endsMode: HostAnnouncementEndsMode;
+  endsAt: string | null;
+};
+
+export type ActiveSystemBanner = {
+  type: "host" | "final-results";
+  message: string;
+  startedAt: string | null;
+  endsAt: string | null;
+};
+
+export type HostAnnouncementView = HostAnnouncementRecord & {
+  status: HostAnnouncementStatus;
+  effectiveEndAt: string | null;
+};
+
+export type SurveyPhase = "live" | "closing" | "finalized";
+
+export type SurveyClosureGracePlayer = {
+  playerId: string;
+  stepIndex: number;
+};
+
+export type CreateHostAnnouncementInput = {
+  message: string;
+  scheduledFor: string;
+  endsMode: HostAnnouncementEndsMode;
+  endsAt: string | null;
+};
+
 export type PlayerRecord = {
   id: string;
   name: string;
@@ -155,6 +208,12 @@ export type PublicSnapshot = {
   leaderboard: LeaderboardEntry[];
   latestPhotos: GalleryEntry[];
   recentEvents: GameEventRecord[];
+  activeHostAnnouncement: ActiveHostAnnouncement | null;
+  activeSystemBanner: ActiveSystemBanner | null;
+  nextHostTransitionAt: string | null;
+  surveyRuntime: SurveyRuntimeState;
+  surveyPhase: SurveyPhase;
+  finalSurveySnapshot: FinalSurveyResultsSnapshot | null;
 };
 
 export type SessionSnapshot = {
@@ -166,6 +225,9 @@ export type SessionSnapshot = {
   leaderboard: LeaderboardEntry[];
   questions: Question[];
   missions: PhotoMission[];
+  surveyPhase: SurveyPhase;
+  finalSurveySnapshot: FinalSurveyResultsSnapshot | null;
+  resultsPromptRequired: boolean;
 };
 
 export type SurveyPlayerComparison =
@@ -196,10 +258,70 @@ export type SurveyQuestionResult = {
   options: SurveyOptionResult[];
 };
 
+export type LiveSurveyOptionOverview = {
+  optionId: OptionId;
+  label: string;
+  voteCount: number;
+  percentage: number;
+  isTopChoice: boolean;
+};
+
+export type LiveSurveyQuestionOverview = {
+  questionId: string;
+  questionTitle: string;
+  prompt: string;
+  totalAnswered: number;
+  totalResponses: number;
+  skippedCount: number;
+  topOptionIds: OptionId[];
+  options: LiveSurveyOptionOverview[];
+};
+
+export type LiveSurveyOverview = {
+  questionCount: number;
+  answeredQuestionCount: number;
+  totalParticipants: number;
+  questions: LiveSurveyQuestionOverview[];
+};
+
 export type SurveyResultsSnapshot = {
   playerId: string;
   completed: boolean;
   questionResults: SurveyQuestionResult[];
+};
+
+export type FinalSurveyResultsSnapshot = {
+  finalizedAt: string;
+  totalParticipants: number;
+  questionResults: LiveSurveyQuestionOverview[];
+};
+
+export type SurveyRuntimeState = {
+  phase: SurveyPhase;
+  closedAt: string | null;
+  finalizedAt: string | null;
+  finalResultsSnapshot: FinalSurveyResultsSnapshot | null;
+  finalBannerMessage: string | null;
+  gracePlayers: SurveyClosureGracePlayer[];
+};
+
+export type AdminPlayerMonitorStatus =
+  | "active"
+  | "finishing-current-step"
+  | "completed"
+  | "idle";
+
+export type AdminPlayerMonitorEntry = {
+  playerId: string;
+  name: string;
+  participantType: ParticipantType;
+  status: AdminPlayerMonitorStatus;
+  currentStepIndex: number;
+  currentStepLabel: string;
+  answeredQuestions: number;
+  uploadedPhotos: number;
+  lastSeenAt: string;
+  completedAt: string | null;
 };
 
 export type SummarySnapshot = {
@@ -218,6 +340,16 @@ export type AdminSnapshot = {
   leaderboard: LeaderboardEntry[];
   photos: PhotoUploadRecord[];
   totalParticipants: number;
+  activeHostAnnouncement: ActiveHostAnnouncement | null;
+  hostAnnouncements: HostAnnouncementView[];
+  nextHostTransitionAt: string | null;
+  surveyRuntime: SurveyRuntimeState;
+  surveyPhase: SurveyPhase;
+  finalizedAt: string | null;
+  finalSurveySnapshot: FinalSurveyResultsSnapshot | null;
+  liveSurveyOverview: LiveSurveyOverview;
+  playersFinishingCurrentStep: number;
+  playerMonitor: AdminPlayerMonitorEntry[];
 };
 
 export type LocalDatabase = {
@@ -226,8 +358,10 @@ export type LocalDatabase = {
   answers: PlayerAnswerRecord[];
   photos: PhotoUploadRecord[];
   events: GameEventRecord[];
+  hostAnnouncements: HostAnnouncementRecord[];
   questions: Question[];
   missions: PhotoMission[];
+  surveyRuntime: SurveyRuntimeState;
 };
 
 export type StartGameInput = {

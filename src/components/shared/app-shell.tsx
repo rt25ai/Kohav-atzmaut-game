@@ -15,7 +15,8 @@ export function AppShell({
       <BrandHeader />
       <main
         id="main-content"
-        className="relative z-10 mx-auto max-w-[92rem] px-4 pb-12 pt-28 sm:px-6 lg:px-8"
+        className="relative z-10 mx-auto max-w-[92rem] px-4 pb-12 pt-36 sm:px-6 sm:pt-32 lg:px-8"
+        style={{ overflowAnchor: "none" }}
       >
         {children}
       </main>

@@ -1,11 +1,11 @@
-export const LANDING_INTRO_ASSET_PATH = "/branding/site-icon.png";
-export const LANDING_INTRO_TOTAL_MS = 1_500;
+export const LANDING_INTRO_ASSET_PATH = "/branding/landing-intro-hf-20260418.png";
+export const LANDING_INTRO_TOTAL_MS = 2_000;
 
 export const LANDING_INTRO_TIMELINE = {
-  glow: { delayMs: 0, durationMs: 350 },
-  emblem: { delayMs: 200, durationMs: 700 },
-  hold: { delayMs: 900, durationMs: 300 },
-  exit: { delayMs: 1_200, durationMs: 300 },
+  glow: { delayMs: 0, durationMs: 450 },
+  emblem: { delayMs: 250, durationMs: 1_000 },
+  hold: { delayMs: 1_250, durationMs: 400 },
+  exit: { delayMs: 1_650, durationMs: 350 },
 } as const;
 
 const CEREMONIAL_EASE: [number, number, number, number] = [0.18, 0.72, 0.18, 1];

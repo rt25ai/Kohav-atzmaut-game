@@ -1,15 +1,21 @@
 "use client";
 
+import { Howler } from "howler";
 import {
   createContext,
   startTransition,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
-import { getHowl, type SoundName } from "@/lib/sound/generated-sfx";
+import {
+  getHowl,
+  SOUND_NAMES,
+  type SoundName,
+} from "@/lib/sound/generated-sfx";
 import {
   getStoredSoundEnabled,
   setStoredSoundEnabled,
@@ -32,9 +38,38 @@ export function SoundProvider({
 }>) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [globalSoundEnabled, setGlobalSoundEnabledState] = useState(true);
+  const audioPrimedRef = useRef(false);
 
   useEffect(() => {
     setSoundEnabled(getStoredSoundEnabled());
+  }, []);
+
+  useEffect(() => {
+    const primeAudio = () => {
+      if (Howler.ctx?.state === "suspended") {
+        void Howler.ctx.resume().catch(() => undefined);
+      }
+
+      if (audioPrimedRef.current) {
+        return;
+      }
+
+      audioPrimedRef.current = true;
+      for (const soundName of SOUND_NAMES) {
+        const howl = getHowl(soundName);
+        if (howl.state() === "unloaded") {
+          howl.load();
+        }
+      }
+    };
+
+    window.addEventListener("pointerdown", primeAudio, { passive: true });
+    window.addEventListener("keydown", primeAudio);
+
+    return () => {
+      window.removeEventListener("pointerdown", primeAudio);
+      window.removeEventListener("keydown", primeAudio);
+    };
   }, []);
 
   const value = useMemo<SoundContextValue>(
@@ -56,7 +91,17 @@ export function SoundProvider({
           return;
         }
 
-        getHowl(name).play();
+        if (Howler.ctx?.state === "suspended") {
+          void Howler.ctx.resume().catch(() => undefined);
+        }
+
+        const howl = getHowl(name);
+        if (howl.state() === "unloaded") {
+          howl.load();
+        }
+
+        audioPrimedRef.current = true;
+        howl.play();
       },
     }),
     [globalSoundEnabled, soundEnabled],

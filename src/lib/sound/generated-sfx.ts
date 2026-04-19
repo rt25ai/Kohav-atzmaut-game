@@ -15,18 +15,418 @@ export type SoundName =
   | "upload"
   | "celebration";
 
-type Waveform = "sine" | "triangle" | "square" | "noise";
+export type Waveform = "sine" | "triangle" | "square" | "noise";
 
-type Tone = {
+export type Tone = {
   start: number;
   duration: number;
   frequency: number;
+  endFrequency?: number;
   gain: number;
   waveform: Waveform;
+  attack?: number;
+  release?: number;
+  tremoloRate?: number;
+  tremoloDepth?: number;
+};
+
+type SoundBlueprint = {
+  volume: number;
+  tones: Tone[];
 };
 
 const SAMPLE_RATE = 22_050;
 const cache = new Map<SoundName, Howl>();
+
+export const SOUND_NAMES = [
+  "start",
+  "click",
+  "transition",
+  "correct",
+  "wrong",
+  "points",
+  "rankUp",
+  "gallery",
+  "photo",
+  "upload",
+  "celebration",
+] as const satisfies SoundName[];
+
+export const soundBlueprints: Record<SoundName, SoundBlueprint> = {
+  start: {
+    volume: 0.82,
+    tones: [
+      {
+        start: 0,
+        duration: 0.14,
+        frequency: 320,
+        endFrequency: 392,
+        gain: 0.09,
+        waveform: "sine",
+        release: 0.08,
+      },
+      {
+        start: 0.03,
+        duration: 0.18,
+        frequency: 392,
+        endFrequency: 523.25,
+        gain: 0.18,
+        waveform: "triangle",
+        attack: 0.006,
+        release: 0.1,
+      },
+      {
+        start: 0.11,
+        duration: 0.24,
+        frequency: 659.25,
+        endFrequency: 783.99,
+        gain: 0.11,
+        waveform: "sine",
+        tremoloRate: 10,
+        tremoloDepth: 0.16,
+      },
+      {
+        start: 0.2,
+        duration: 0.05,
+        frequency: 1400,
+        gain: 0.03,
+        waveform: "noise",
+        attack: 0.001,
+        release: 0.04,
+      },
+    ],
+  },
+  click: {
+    volume: 0.74,
+    tones: [
+      {
+        start: 0,
+        duration: 0.014,
+        frequency: 1200,
+        gain: 0.06,
+        waveform: "noise",
+        attack: 0.001,
+        release: 0.012,
+      },
+      {
+        start: 0,
+        duration: 0.055,
+        frequency: 680,
+        endFrequency: 940,
+        gain: 0.18,
+        waveform: "triangle",
+        attack: 0.002,
+        release: 0.04,
+      },
+      {
+        start: 0.012,
+        duration: 0.082,
+        frequency: 1260,
+        endFrequency: 980,
+        gain: 0.08,
+        waveform: "sine",
+        attack: 0.003,
+        release: 0.06,
+      },
+    ],
+  },
+  transition: {
+    volume: 0.74,
+    tones: [
+      {
+        start: 0,
+        duration: 0.14,
+        frequency: 410,
+        endFrequency: 560,
+        gain: 0.11,
+        waveform: "sine",
+        release: 0.1,
+      },
+      {
+        start: 0.025,
+        duration: 0.2,
+        frequency: 560,
+        endFrequency: 710,
+        gain: 0.12,
+        waveform: "triangle",
+        attack: 0.006,
+        release: 0.12,
+      },
+      {
+        start: 0.07,
+        duration: 0.16,
+        frequency: 930,
+        endFrequency: 760,
+        gain: 0.05,
+        waveform: "sine",
+        tremoloRate: 7,
+        tremoloDepth: 0.1,
+      },
+    ],
+  },
+  correct: {
+    volume: 0.78,
+    tones: [
+      {
+        start: 0,
+        duration: 0.1,
+        frequency: 523.25,
+        endFrequency: 587.33,
+        gain: 0.14,
+        waveform: "triangle",
+      },
+      {
+        start: 0.03,
+        duration: 0.14,
+        frequency: 659.25,
+        endFrequency: 698.46,
+        gain: 0.13,
+        waveform: "triangle",
+      },
+      {
+        start: 0.07,
+        duration: 0.2,
+        frequency: 783.99,
+        endFrequency: 880,
+        gain: 0.09,
+        waveform: "sine",
+      },
+    ],
+  },
+  wrong: {
+    volume: 0.7,
+    tones: [
+      {
+        start: 0,
+        duration: 0.08,
+        frequency: 310,
+        endFrequency: 280,
+        gain: 0.12,
+        waveform: "triangle",
+      },
+      {
+        start: 0.05,
+        duration: 0.14,
+        frequency: 250,
+        endFrequency: 196,
+        gain: 0.12,
+        waveform: "sine",
+      },
+      {
+        start: 0,
+        duration: 0.018,
+        frequency: 900,
+        gain: 0.03,
+        waveform: "noise",
+      },
+    ],
+  },
+  points: {
+    volume: 0.78,
+    tones: [
+      {
+        start: 0,
+        duration: 0.06,
+        frequency: 740,
+        endFrequency: 910,
+        gain: 0.1,
+        waveform: "triangle",
+      },
+      {
+        start: 0.035,
+        duration: 0.11,
+        frequency: 1040,
+        endFrequency: 1240,
+        gain: 0.08,
+        waveform: "sine",
+      },
+      {
+        start: 0.01,
+        duration: 0.022,
+        frequency: 1320,
+        gain: 0.02,
+        waveform: "noise",
+        attack: 0.001,
+        release: 0.02,
+      },
+    ],
+  },
+  rankUp: {
+    volume: 0.82,
+    tones: [
+      {
+        start: 0,
+        duration: 0.1,
+        frequency: 440,
+        endFrequency: 523.25,
+        gain: 0.12,
+        waveform: "sine",
+      },
+      {
+        start: 0.04,
+        duration: 0.14,
+        frequency: 523.25,
+        endFrequency: 659.25,
+        gain: 0.14,
+        waveform: "triangle",
+      },
+      {
+        start: 0.1,
+        duration: 0.18,
+        frequency: 659.25,
+        endFrequency: 880,
+        gain: 0.11,
+        waveform: "triangle",
+      },
+      {
+        start: 0.16,
+        duration: 0.08,
+        frequency: 1320,
+        gain: 0.03,
+        waveform: "noise",
+      },
+    ],
+  },
+  gallery: {
+    volume: 0.74,
+    tones: [
+      {
+        start: 0,
+        duration: 0.12,
+        frequency: 392,
+        endFrequency: 415.3,
+        gain: 0.11,
+        waveform: "sine",
+      },
+      {
+        start: 0.04,
+        duration: 0.16,
+        frequency: 587.33,
+        endFrequency: 659.25,
+        gain: 0.1,
+        waveform: "sine",
+      },
+      {
+        start: 0.08,
+        duration: 0.18,
+        frequency: 784,
+        endFrequency: 698.46,
+        gain: 0.05,
+        waveform: "triangle",
+        tremoloRate: 7,
+        tremoloDepth: 0.1,
+      },
+    ],
+  },
+  photo: {
+    volume: 0.78,
+    tones: [
+      {
+        start: 0,
+        duration: 0.018,
+        frequency: 1600,
+        gain: 0.15,
+        waveform: "noise",
+        attack: 0.001,
+        release: 0.015,
+      },
+      {
+        start: 0.01,
+        duration: 0.075,
+        frequency: 820,
+        endFrequency: 460,
+        gain: 0.14,
+        waveform: "triangle",
+        release: 0.05,
+      },
+      {
+        start: 0.02,
+        duration: 0.06,
+        frequency: 1100,
+        endFrequency: 820,
+        gain: 0.06,
+        waveform: "sine",
+      },
+    ],
+  },
+  upload: {
+    volume: 0.82,
+    tones: [
+      {
+        start: 0,
+        duration: 0.08,
+        frequency: 520,
+        endFrequency: 650,
+        gain: 0.11,
+        waveform: "triangle",
+      },
+      {
+        start: 0.04,
+        duration: 0.14,
+        frequency: 690,
+        endFrequency: 880,
+        gain: 0.1,
+        waveform: "sine",
+      },
+      {
+        start: 0.08,
+        duration: 0.16,
+        frequency: 980,
+        endFrequency: 1180,
+        gain: 0.06,
+        waveform: "triangle",
+      },
+    ],
+  },
+  celebration: {
+    volume: 0.86,
+    tones: [
+      {
+        start: 0,
+        duration: 0.1,
+        frequency: 392,
+        endFrequency: 440,
+        gain: 0.1,
+        waveform: "sine",
+      },
+      {
+        start: 0.04,
+        duration: 0.12,
+        frequency: 523.25,
+        endFrequency: 587.33,
+        gain: 0.12,
+        waveform: "triangle",
+      },
+      {
+        start: 0.1,
+        duration: 0.16,
+        frequency: 659.25,
+        endFrequency: 739.99,
+        gain: 0.12,
+        waveform: "triangle",
+      },
+      {
+        start: 0.16,
+        duration: 0.22,
+        frequency: 783.99,
+        endFrequency: 880,
+        gain: 0.09,
+        waveform: "sine",
+        tremoloRate: 9,
+        tremoloDepth: 0.12,
+      },
+      {
+        start: 0.2,
+        duration: 0.1,
+        frequency: 1600,
+        gain: 0.04,
+        waveform: "noise",
+        attack: 0.001,
+        release: 0.08,
+      },
+    ],
+  },
+};
 
 function sampleWave(waveform: Waveform, phase: number) {
   switch (waveform) {
@@ -41,19 +441,49 @@ function sampleWave(waveform: Waveform, phase: number) {
   }
 }
 
-function envelope(position: number, duration: number) {
-  const attack = Math.min(0.02, duration * 0.25);
-  const release = Math.min(0.12, duration * 0.35);
+function envelope(position: number, tone: Tone) {
+  const attack = tone.attack ?? Math.min(0.02, tone.duration * 0.25);
+  const release = tone.release ?? Math.min(0.12, tone.duration * 0.35);
 
   if (position < attack) {
     return position / attack;
   }
 
-  if (position > duration - release) {
-    return Math.max((duration - position) / release, 0);
+  if (position > tone.duration - release) {
+    return Math.max((tone.duration - position) / release, 0);
   }
 
   return 1;
+}
+
+function frequencyAt(tone: Tone, position: number) {
+  if (!tone.endFrequency || tone.endFrequency === tone.frequency) {
+    return tone.frequency;
+  }
+
+  const progress = Math.min(Math.max(position / tone.duration, 0), 1);
+  return tone.frequency + (tone.endFrequency - tone.frequency) * progress;
+}
+
+function sampleTone(tone: Tone, position: number) {
+  const env = envelope(position, tone);
+  const currentFrequency = frequencyAt(tone, position);
+  const averageFrequency = (tone.frequency + currentFrequency) / 2;
+  const phase = 2 * Math.PI * averageFrequency * position;
+  let sample = sampleWave(tone.waveform, phase);
+
+  if (tone.tremoloRate && tone.tremoloDepth) {
+    const tremolo =
+      1 - tone.tremoloDepth +
+      tone.tremoloDepth * ((Math.sin(2 * Math.PI * tone.tremoloRate * position) + 1) / 2);
+    sample *= tremolo;
+  }
+
+  return sample * tone.gain * env;
+}
+
+function softClip(value: number) {
+  return Math.tanh(value * 1.18);
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -66,35 +496,43 @@ function toBase64(bytes: Uint8Array) {
   return window.btoa(binary);
 }
 
-function toWavDataUri(tones: Tone[], totalDuration: number) {
+function getTotalDuration(tones: Tone[]) {
+  return Math.max(...tones.map((tone) => tone.start + tone.duration)) + 0.02;
+}
+
+export function renderSoundWavBytes(name: SoundName) {
+  const blueprint = soundBlueprints[name];
+  const totalDuration = getTotalDuration(blueprint.tones);
   const frameCount = Math.ceil(totalDuration * SAMPLE_RATE);
   const bytes = new Uint8Array(44 + frameCount * 2);
   const view = new DataView(bytes.buffer);
+  const samples = new Float32Array(frameCount);
   let max = 0;
-  const samples = new Int16Array(frameCount);
 
   for (let index = 0; index < frameCount; index += 1) {
     const time = index / SAMPLE_RATE;
     let value = 0;
 
-    for (const tone of tones) {
+    for (const tone of blueprint.tones) {
       if (time < tone.start || time > tone.start + tone.duration) {
         continue;
       }
 
-      const position = time - tone.start;
-      const env = envelope(position, tone.duration);
-      const phase = 2 * Math.PI * tone.frequency * position;
-      value += sampleWave(tone.waveform, phase) * tone.gain * env;
+      value += sampleTone(tone, time - tone.start);
     }
 
+    value = softClip(value);
     max = Math.max(max, Math.abs(value));
-    samples[index] = value as unknown as number;
+    samples[index] = value;
   }
 
   const normalizer = max === 0 ? 1 : 0.9 / max;
   for (let index = 0; index < frameCount; index += 1) {
-    view.setInt16(44 + index * 2, Math.round(samples[index] * normalizer * 32_767), true);
+    view.setInt16(
+      44 + index * 2,
+      Math.round(samples[index] * normalizer * 32_767),
+      true,
+    );
   }
 
   "RIFF".split("").forEach((char, index) => view.setUint8(index, char.charCodeAt(0)));
@@ -111,66 +549,20 @@ function toWavDataUri(tones: Tone[], totalDuration: number) {
   "data".split("").forEach((char, index) => view.setUint8(36 + index, char.charCodeAt(0)));
   view.setUint32(40, frameCount * 2, true);
 
-  return `data:audio/wav;base64,${toBase64(bytes)}`;
+  return bytes;
+}
+
+export function renderSoundDataUri(name: SoundName) {
+  return `data:audio/wav;base64,${toBase64(renderSoundWavBytes(name))}`;
 }
 
 function makeSound(name: SoundName) {
-  const definitions: Record<SoundName, Tone[]> = {
-    start: [
-      { start: 0, duration: 0.16, frequency: 392, gain: 0.45, waveform: "triangle" },
-      { start: 0.1, duration: 0.18, frequency: 523.25, gain: 0.45, waveform: "triangle" },
-      { start: 0.2, duration: 0.28, frequency: 659.25, gain: 0.42, waveform: "triangle" },
-    ],
-    click: [{ start: 0, duration: 0.06, frequency: 880, gain: 0.35, waveform: "square" }],
-    transition: [
-      { start: 0, duration: 0.18, frequency: 760, gain: 0.28, waveform: "triangle" },
-      { start: 0.06, duration: 0.22, frequency: 530, gain: 0.26, waveform: "triangle" },
-    ],
-    correct: [
-      { start: 0, duration: 0.12, frequency: 523.25, gain: 0.45, waveform: "triangle" },
-      { start: 0.03, duration: 0.16, frequency: 659.25, gain: 0.4, waveform: "triangle" },
-      { start: 0.06, duration: 0.24, frequency: 783.99, gain: 0.35, waveform: "triangle" },
-    ],
-    wrong: [
-      { start: 0, duration: 0.12, frequency: 330, gain: 0.36, waveform: "square" },
-      { start: 0.08, duration: 0.2, frequency: 220, gain: 0.3, waveform: "square" },
-    ],
-    points: [
-      { start: 0, duration: 0.08, frequency: 900, gain: 0.32, waveform: "triangle" },
-      { start: 0.06, duration: 0.12, frequency: 1250, gain: 0.28, waveform: "triangle" },
-    ],
-    rankUp: [
-      { start: 0, duration: 0.14, frequency: 523.25, gain: 0.36, waveform: "triangle" },
-      { start: 0.06, duration: 0.16, frequency: 659.25, gain: 0.36, waveform: "triangle" },
-      { start: 0.12, duration: 0.24, frequency: 880, gain: 0.34, waveform: "triangle" },
-    ],
-    gallery: [
-      { start: 0, duration: 0.18, frequency: 440, gain: 0.24, waveform: "sine" },
-      { start: 0.08, duration: 0.2, frequency: 660, gain: 0.22, waveform: "sine" },
-    ],
-    photo: [
-      { start: 0, duration: 0.03, frequency: 1200, gain: 0.35, waveform: "noise" },
-      { start: 0.02, duration: 0.08, frequency: 500, gain: 0.28, waveform: "square" },
-    ],
-    upload: [
-      { start: 0, duration: 0.1, frequency: 587.33, gain: 0.34, waveform: "triangle" },
-      { start: 0.08, duration: 0.18, frequency: 783.99, gain: 0.34, waveform: "triangle" },
-    ],
-    celebration: [
-      { start: 0, duration: 0.18, frequency: 392, gain: 0.26, waveform: "triangle" },
-      { start: 0.08, duration: 0.18, frequency: 523.25, gain: 0.28, waveform: "triangle" },
-      { start: 0.16, duration: 0.22, frequency: 659.25, gain: 0.3, waveform: "triangle" },
-      { start: 0.26, duration: 0.28, frequency: 783.99, gain: 0.3, waveform: "triangle" },
-      { start: 0.32, duration: 0.14, frequency: 1500, gain: 0.18, waveform: "noise" },
-    ],
-  };
-
-  const tones = definitions[name];
-  const totalDuration = Math.max(...tones.map((tone) => tone.start + tone.duration)) + 0.02;
+  const blueprint = soundBlueprints[name];
 
   return new Howl({
-    src: [toWavDataUri(tones, totalDuration)],
-    volume: name === "celebration" ? 0.8 : 0.68,
+    src: [renderSoundDataUri(name)],
+    volume: blueprint.volume,
+    preload: true,
   });
 }
 

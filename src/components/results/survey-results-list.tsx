@@ -44,7 +44,7 @@ export function SurveyResultsList({
   questionResults: SurveyQuestionResult[];
 }) {
   return (
-    <div className="space-y-5">
+    <div data-survey-results-list className="space-y-5">
       {questionResults.map((question, index) => (
         <section
           key={question.questionId}

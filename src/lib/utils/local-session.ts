@@ -3,8 +3,10 @@
 import {
   STORAGE_PENDING_UPLOADS_KEY,
   STORAGE_SESSION_KEY,
+  STORAGE_SESSION_SNAPSHOT_KEY,
   STORAGE_SOUND_KEY,
 } from "@/lib/config";
+import type { SessionSnapshot } from "@/lib/types";
 
 export type PendingUpload = {
   id: string;
@@ -31,6 +33,43 @@ export function setStoredPlayerId(playerId: string) {
 
 export function clearStoredPlayerId() {
   window.localStorage.removeItem(STORAGE_SESSION_KEY);
+}
+
+export function getStoredSessionSnapshot() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(STORAGE_SESSION_SNAPSHOT_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as SessionSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredSessionSnapshot(session: SessionSnapshot) {
+  window.localStorage.setItem(
+    STORAGE_SESSION_SNAPSHOT_KEY,
+    JSON.stringify(session),
+  );
+}
+
+export function clearStoredSessionSnapshot() {
+  window.localStorage.removeItem(STORAGE_SESSION_SNAPSHOT_KEY);
+}
+
+export function clearStoredActiveGame(playerId?: string | null) {
+  clearStoredPlayerId();
+  clearStoredSessionSnapshot();
+
+  if (playerId) {
+    clearPendingUploadsForPlayer(playerId);
+  }
 }
 
 export function getStoredSoundEnabled() {

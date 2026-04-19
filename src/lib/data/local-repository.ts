@@ -5,6 +5,9 @@ import path from "node:path";
 import { nanoid } from "nanoid";
 
 import {
+  normalizeAdminSettings,
+} from "@/lib/content/admin-settings";
+import {
   defaultAdminSettings,
   defaultMissions,
   defaultQuestions,
@@ -17,31 +20,50 @@ import {
 import {
   assertPlayerStep,
   appendEvent,
+  buildAdminPlayerMonitor,
+  buildFinalSystemBanner,
   buildLeaderboard,
+  buildLiveSurveyOverview,
   buildSessionSnapshot,
   buildSummarySnapshot,
   buildSurveyResultsSnapshot,
+  createDefaultSurveyRuntimeState,
+  createFrozenSurveySnapshot,
+  deriveHostAnnouncementState,
+  FINAL_RESULTS_PUBLISHED_MESSAGE,
+  getCurrentPlayerStep,
   getNowIso,
   getPlayerAnswers,
   getPlayerRank,
+  getSurveyRuntimePhase,
   hasCompletedAllPhotoMissions,
   isPlayerActive,
+  normalizeSurveyRuntimeState,
+  shouldAllowCurrentStepCompletionAfterClosure,
 } from "@/lib/data/helpers";
 import {
   EXTRA_GALLERY_MISSION_ID,
   EXTRA_GALLERY_MISSION_TITLE,
 } from "@/lib/game/photo-gallery";
+import { filterPublicRecentEvents } from "@/lib/game/live-event-feed";
 import {
   getPlayerDisplayName,
   pickByParticipantType,
 } from "@/lib/game/player-experience";
 import { calculateMissionScore, calculateQuestionScore } from "@/lib/game/scoring";
-import { buildRunSteps, shuffleArray } from "@/lib/game/run-plan";
+import { buildLiveQuestionResult } from "@/lib/game/survey-results";
+import {
+  buildRunSteps,
+  getOrderedMissionIds,
+  getOrderedQuestionIds,
+} from "@/lib/game/run-plan";
 import type {
   AdminSettings,
   AdminSettingsPatch,
   AdminSnapshot,
   AdjustPlayerPointsInput,
+  CreateHostAnnouncementInput,
+  HostAnnouncementRecord,
   LocalDatabase,
   PhotoModerationInput,
   PublicSnapshot,
@@ -51,6 +73,8 @@ import type {
   SubmitAnswerInput,
   SubmitMissionInput,
   SummarySnapshot,
+  SurveyQuestionResult,
+  SurveyRuntimeState,
 } from "@/lib/types";
 
 type ActionOutcome = {
@@ -60,6 +84,7 @@ type ActionOutcome = {
   rankImproved: boolean;
   completed: boolean;
   status: "correct" | "wrong" | "skipped" | "uploaded";
+  liveQuestionResult: SurveyQuestionResult | null;
 };
 
 let writeQueue: Promise<unknown> = Promise.resolve();
@@ -72,18 +97,109 @@ function createInitialDatabase(): LocalDatabase {
     answers: [],
     photos: [],
     events: [],
+    hostAnnouncements: [],
     questions: defaultQuestions,
     missions: defaultMissions,
+    surveyRuntime: createDefaultSurveyRuntimeState(),
   };
 }
 
 function buildMissionOrder(missions: LocalDatabase["missions"]) {
-  const standardMissionOrder = missions
-    .filter((mission) => !mission.isFinal)
-    .map((mission) => mission.id);
-  const finalMission = missions.find((mission) => mission.isFinal);
+  return getOrderedMissionIds(missions);
+}
 
-  return [...standardMissionOrder, finalMission?.id ?? ""].filter(Boolean);
+function normalizeLocalDb(db: Partial<LocalDatabase> | null | undefined): LocalDatabase {
+  return {
+    settings: normalizeAdminSettings(db?.settings ?? defaultAdminSettings),
+    players: Array.isArray(db?.players) ? db.players : [],
+    answers: Array.isArray(db?.answers) ? db.answers : [],
+    photos: Array.isArray(db?.photos) ? db.photos : [],
+    events: Array.isArray(db?.events) ? db.events : [],
+    hostAnnouncements: Array.isArray(db?.hostAnnouncements)
+      ? db.hostAnnouncements
+      : [],
+    questions:
+      Array.isArray(db?.questions) && db.questions.length > 0
+        ? db.questions
+        : defaultQuestions,
+    missions:
+      Array.isArray(db?.missions) && db.missions.length > 0
+        ? db.missions
+        : defaultMissions,
+    surveyRuntime: normalizeSurveyRuntimeState(db?.surveyRuntime),
+  };
+}
+
+function getGracePlayersForSurveyClosure(db: LocalDatabase) {
+  return db.players.flatMap((player) => {
+    const currentStep = getCurrentPlayerStep(player);
+
+    if (player.completed || !currentStep || !isPlayerActive(player)) {
+      return [];
+    }
+
+    return [{ playerId: player.id, stepIndex: player.currentStepIndex }];
+  });
+}
+
+function maybeFinalizeClosedSurveyRuntime(db: LocalDatabase) {
+  if (
+    db.surveyRuntime.phase !== "closing" ||
+    db.surveyRuntime.gracePlayers.length > 0
+  ) {
+    return db.surveyRuntime;
+  }
+
+  db.surveyRuntime = {
+    ...db.surveyRuntime,
+    phase: "finalized",
+    finalizedAt: db.surveyRuntime.finalizedAt ?? getNowIso(),
+  };
+
+  return db.surveyRuntime;
+}
+
+function consumeClosingGracePlayer(
+  db: LocalDatabase,
+  playerId: string,
+  stepIndex: number,
+) {
+  if (db.surveyRuntime.phase !== "closing") {
+    return db.surveyRuntime;
+  }
+
+  db.surveyRuntime = {
+    ...db.surveyRuntime,
+    gracePlayers: db.surveyRuntime.gracePlayers.filter(
+      (entry) => !(entry.playerId === playerId && entry.stepIndex === stepIndex),
+    ),
+  };
+
+  return maybeFinalizeClosedSurveyRuntime(db);
+}
+
+function assertSurveyStillAcceptsStep(
+  db: LocalDatabase,
+  playerId: string,
+  playerCurrentStepIndex: number,
+  submittedStepIndex: number,
+) {
+  if (db.surveyRuntime.phase === "finalized") {
+    throw new Error("התוצאות הסופיות כבר פורסמו. אי אפשר לענות יותר.");
+  }
+
+  if (
+    db.surveyRuntime.phase === "closing" &&
+    !shouldAllowCurrentStepCompletionAfterClosure({
+      phase: db.surveyRuntime.phase,
+      playerId,
+      playerCurrentStepIndex,
+      submittedStepIndex,
+      gracePlayers: db.surveyRuntime.gracePlayers,
+    })
+  ) {
+    throw new Error("הסקר נסגר והתוצאות הסופיות פורסמו.");
+  }
 }
 
 async function ensureLocalDb() {
@@ -103,10 +219,11 @@ async function ensureLocalDb() {
 async function readDb() {
   await ensureLocalDb();
   const raw = await fs.readFile(LOCAL_DB_PATH, "utf8");
-  return JSON.parse(raw) as LocalDatabase;
+  return normalizeLocalDb(JSON.parse(raw) as Partial<LocalDatabase>);
 }
 
 async function writeDb(db: LocalDatabase) {
+  db.surveyRuntime = normalizeSurveyRuntimeState(db.surveyRuntime);
   db.questions = defaultQuestions;
   db.missions = defaultMissions;
   await fs.writeFile(LOCAL_DB_PATH, JSON.stringify(db, null, 2), "utf8");
@@ -139,7 +256,7 @@ function createPlayer(
     id: nanoid(12),
     name: name.trim(),
     participantType,
-    questionOrder: shuffleArray(db.questions.map((question) => question.id)),
+    questionOrder: getOrderedQuestionIds(db.questions),
     missionOrder: buildMissionOrder(db.missions),
     currentStepIndex: 0,
     totalScore: 0,
@@ -164,6 +281,27 @@ function findPlayerOrThrow(db: LocalDatabase, playerId: string) {
   }
 
   return player;
+}
+
+function findHostAnnouncementOrThrow(
+  db: LocalDatabase,
+  hostAnnouncementId: string,
+): HostAnnouncementRecord {
+  const announcement = db.hostAnnouncements.find(
+    (entry) => entry.id === hostAnnouncementId,
+  );
+
+  if (!announcement) {
+    throw new Error("הודעת המנחה לא נמצאה");
+  }
+
+  return announcement;
+}
+
+function buildHostAnnouncementSummary(announcement: HostAnnouncementRecord) {
+  return announcement.message.length > 48
+    ? `${announcement.message.slice(0, 45).trim()}...`
+    : announcement.message;
 }
 
 function finalizeCompletedRun(db: LocalDatabase, playerId: string) {
@@ -251,11 +389,65 @@ export async function localGetSurveyResults(playerId: string) {
   return buildSurveyResultsSnapshot(db, player);
 }
 
+export async function localGetSurveyRuntime() {
+  const db = await readDb();
+  return db.surveyRuntime;
+}
+
+export async function localPublishFinalSurveyResults() {
+  return withDb(async (db) => {
+    if (db.surveyRuntime.phase !== "live") {
+      return db.surveyRuntime;
+    }
+
+    const closedAt = getNowIso();
+    db.surveyRuntime = {
+      phase: "closing",
+      closedAt,
+      finalizedAt: null,
+      finalResultsSnapshot: createFrozenSurveySnapshot(db, closedAt),
+      finalBannerMessage: FINAL_RESULTS_PUBLISHED_MESSAGE,
+      gracePlayers: getGracePlayersForSurveyClosure(db),
+    };
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: 'פורסמו התוצאות הסופיות והסקר נסגר למענה חדש',
+      playerId: null,
+      playerName: null,
+    });
+
+    return maybeFinalizeClosedSurveyRuntime(db);
+  });
+}
+
+export async function localReopenSurveyToLive() {
+  return withDb(async (db) => {
+    if (db.surveyRuntime.phase === "live") {
+      return db.surveyRuntime;
+    }
+
+    db.surveyRuntime = createDefaultSurveyRuntimeState();
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: "הסקר הוחזר למצב חי ונפתח שוב למענה חדש",
+      playerId: null,
+      playerName: null,
+    });
+
+    return db.surveyRuntime;
+  });
+}
+
 export async function localGetPublicSnapshot(): Promise<PublicSnapshot> {
   const db = await readDb();
+  const hostState = deriveHostAnnouncementState(db.hostAnnouncements);
+  const surveyPhase = getSurveyRuntimePhase(db.surveyRuntime);
 
   return {
-    settings: db.settings,
+    settings: normalizeAdminSettings(db.settings),
     totalParticipants: db.players.length,
     activePlayersNow: db.players.filter(isPlayerActive).length,
     leaderboard: buildLeaderboard(db.players),
@@ -266,7 +458,16 @@ export async function localGetPublicSnapshot(): Promise<PublicSnapshot> {
           new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
       )
       .slice(0, 12),
-    recentEvents: db.events.slice(0, 12),
+    recentEvents: filterPublicRecentEvents(db.events),
+    activeHostAnnouncement: hostState.active,
+    activeSystemBanner: buildFinalSystemBanner({
+      surveyRuntime: db.surveyRuntime,
+      activeHostAnnouncement: hostState.active,
+    }),
+    nextHostTransitionAt: hostState.nextTransitionAt,
+    surveyRuntime: db.surveyRuntime,
+    surveyPhase,
+    finalSurveySnapshot: db.surveyRuntime.finalResultsSnapshot,
   };
 }
 
@@ -353,6 +554,11 @@ export async function localSubmitAnswer(
           rankImproved: false,
           completed: player.completed,
           status: existing.status,
+          liveQuestionResult: buildLiveQuestionResult({
+            question,
+            answers: db.answers,
+            playerId: player.id,
+          }),
         },
       };
     }
@@ -361,10 +567,17 @@ export async function localSubmitAnswer(
       kind: "question",
       id: input.questionId,
     });
+    assertSurveyStillAcceptsStep(
+      db,
+      player.id,
+      player.currentStepIndex,
+      input.stepIndex,
+    );
 
     const beforeRank = getPlayerRank(db.players, player.id);
     const breakdown = calculateQuestionScore({
-      isCorrect: !input.skipped && input.selectedOptionId === question.correctOptionId,
+      // The survey uses subjective community choices, so every non-skipped answer counts.
+      isCorrect: !input.skipped,
       skipped: input.skipped,
       responseMs: input.responseMs,
       previousStreak: player.comboStreak,
@@ -399,6 +612,7 @@ export async function localSubmitAnswer(
     const displayName = getPlayerDisplayName(player.name, player.participantType);
 
     const completionBonus = finalizeCompletedRun(db, player.id);
+    consumeClosingGracePlayer(db, player.id, input.stepIndex);
     appendEvent(db, {
       id: nanoid(12),
       type: "score_update",
@@ -425,6 +639,12 @@ export async function localSubmitAnswer(
       });
     }
 
+    const liveQuestionResult = buildLiveQuestionResult({
+      question,
+      answers: db.answers,
+      playerId: player.id,
+    });
+
     return {
       session: buildSessionSnapshot(db, player),
       outcome: {
@@ -434,6 +654,7 @@ export async function localSubmitAnswer(
         rankImproved,
         completed: player.completed,
         status: breakdown.label,
+        liveQuestionResult,
       },
     };
   });
@@ -467,6 +688,7 @@ export async function localSubmitMission(
           rankImproved: false,
           completed: player.completed,
           status: existing.status,
+          liveQuestionResult: null,
         },
       };
     }
@@ -475,6 +697,12 @@ export async function localSubmitMission(
       kind: "mission",
       id: input.missionId,
     });
+    assertSurveyStillAcceptsStep(
+      db,
+      player.id,
+      player.currentStepIndex,
+      input.stepIndex,
+    );
 
     if (!input.skipped && !input.photoUrl) {
       throw new Error("צריך להעלות תמונה אמיתית כדי להשלים את המשימה.");
@@ -543,6 +771,7 @@ export async function localSubmitMission(
     player.lastSeenAt = now;
 
     const completionBonus = finalizeCompletedRun(db, player.id);
+    consumeClosingGracePlayer(db, player.id, input.stepIndex);
     const afterRank = getPlayerRank(db.players, player.id);
     const rankImproved = afterRank < beforeRank;
     player.lastRank = afterRank;
@@ -566,6 +795,7 @@ export async function localSubmitMission(
         rankImproved,
         completed: player.completed,
         status: input.skipped ? "skipped" : "uploaded",
+        liveQuestionResult: null,
       },
     };
   });
@@ -573,8 +803,11 @@ export async function localSubmitMission(
 
 export async function localGetAdminSnapshot(): Promise<AdminSnapshot> {
   const db = await readDb();
+  const hostState = deriveHostAnnouncementState(db.hostAnnouncements);
+  const liveSurveyOverview = buildLiveSurveyOverview(db);
+
   return {
-    settings: db.settings,
+    settings: normalizeAdminSettings(db.settings),
     players: db.players.sort(
       (left, right) =>
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
@@ -586,7 +819,130 @@ export async function localGetAdminSnapshot(): Promise<AdminSnapshot> {
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
     ),
     totalParticipants: db.players.length,
+    activeHostAnnouncement: hostState.active,
+    hostAnnouncements: hostState.announcements,
+    nextHostTransitionAt: hostState.nextTransitionAt,
+    surveyRuntime: db.surveyRuntime,
+    surveyPhase: db.surveyRuntime.phase,
+    finalizedAt: db.surveyRuntime.finalizedAt,
+    finalSurveySnapshot: db.surveyRuntime.finalResultsSnapshot,
+    liveSurveyOverview,
+    playersFinishingCurrentStep: db.surveyRuntime.gracePlayers.length,
+    playerMonitor: buildAdminPlayerMonitor(db),
   };
+}
+
+export async function localCreateHostAnnouncement(
+  input: CreateHostAnnouncementInput,
+) {
+  return withDb(async (db) => {
+    const now = getNowIso();
+    const announcement: HostAnnouncementRecord = {
+      id: nanoid(12),
+      message: input.message.trim(),
+      scheduledFor: input.scheduledFor,
+      endsMode: input.endsMode,
+      endsAt: input.endsMode === "at_time" ? input.endsAt : null,
+      clearedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    db.hostAnnouncements.push(announcement);
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message:
+        announcement.scheduledFor <= now
+          ? `המנחה שלח הודעה חיה לקהל: "${buildHostAnnouncementSummary(announcement)}"`
+          : `נקבעה הודעת מנחה מתוזמנת: "${buildHostAnnouncementSummary(announcement)}"`,
+      playerId: null,
+      playerName: null,
+    });
+
+    return announcement;
+  });
+}
+
+export async function localActivateHostAnnouncementNow(hostAnnouncementId: string) {
+  return withDb(async (db) => {
+    const announcement = findHostAnnouncementOrThrow(db, hostAnnouncementId);
+    const now = getNowIso();
+
+    announcement.scheduledFor = now;
+    announcement.clearedAt = null;
+    announcement.updatedAt = now;
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: `הופעלה עכשיו הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+      playerId: null,
+      playerName: null,
+    });
+
+    return announcement;
+  });
+}
+
+export async function localStopHostAnnouncementNow(hostAnnouncementId: string) {
+  return withDb(async (db) => {
+    const announcement = findHostAnnouncementOrThrow(db, hostAnnouncementId);
+    const now = getNowIso();
+
+    announcement.clearedAt = now;
+    announcement.updatedAt = now;
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: `הסתיימה הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+      playerId: null,
+      playerName: null,
+    });
+
+    return announcement;
+  });
+}
+
+export async function localCancelHostAnnouncement(hostAnnouncementId: string) {
+  return withDb(async (db) => {
+    const announcement = findHostAnnouncementOrThrow(db, hostAnnouncementId);
+    const now = getNowIso();
+
+    announcement.clearedAt = now;
+    announcement.updatedAt = now;
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: `בוטלה הודעת מנחה מתוזמנת: "${buildHostAnnouncementSummary(announcement)}"`,
+      playerId: null,
+      playerName: null,
+    });
+
+    return announcement;
+  });
+}
+
+export async function localDeleteHostAnnouncement(hostAnnouncementId: string) {
+  return withDb(async (db) => {
+    const announcement = findHostAnnouncementOrThrow(db, hostAnnouncementId);
+    db.hostAnnouncements = db.hostAnnouncements.filter(
+      (entry) => entry.id !== hostAnnouncementId,
+    );
+
+    appendEvent(db, {
+      id: nanoid(12),
+      type: "admin_update",
+      message: `נמחקה הודעת מנחה: "${buildHostAnnouncementSummary(announcement)}"`,
+      playerId: null,
+      playerName: null,
+    });
+
+    return announcement;
+  });
 }
 
 export async function localUpdateSettings(settings: AdminSettingsPatch) {

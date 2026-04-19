@@ -50,3 +50,22 @@ dev-server.err.log
 test-results/
 .tmp-*
 supabase/.temp/
+
+# build/dev/debug logs from background runs
+.codex-next-*.log
+.next-*.log
+.next-dev.*
+
+# verification screenshots
+*-check.png
+*-check-*.png
+*-debug.png
+*-after-fix.png
+*-fixed.png
+hf_*.png
+kiss-cut-stickers-*.png
+play-mobile-*.png
+home-mobile-*.png
+home-live-*.png
+gallery-mobile-*.png
+summary-debug.png

@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import {
+  AlertTriangle,
   Download,
   Eye,
   EyeOff,
@@ -14,21 +15,26 @@ import {
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
+import { AdminLiveSurveyDashboard } from "@/components/admin/admin-live-survey-dashboard";
+import { AdminPlayerMonitor } from "@/components/admin/admin-player-monitor";
+import { AdminRailHint } from "@/components/admin/admin-rail-hint";
 import { Lightbox } from "@/components/shared/lightbox";
 import { useLiveJson } from "@/hooks/use-live-json";
 import { buildPhotoLightboxItem } from "@/lib/game/photo-gallery";
 import type {
   AdminSettingsPatch,
   AdminSnapshot,
+  HostAnnouncementEndsMode,
+  HostAnnouncementView,
   PhotoUploadRecord,
-  PrizeLabels,
 } from "@/lib/types";
-import { formatPoints } from "@/lib/utils/format";
 
 type AdminConsoleProps = {
   initialAuthorized: boolean;
   initialSnapshot: AdminSnapshot | null;
 };
+
+type SurveyRuntimeAction = "publish-final-results" | "reopen-live-survey";
 
 const EMPTY_ADMIN_SNAPSHOT: AdminSnapshot = {
   settings: {
@@ -45,6 +51,28 @@ const EMPTY_ADMIN_SNAPSHOT: AdminSnapshot = {
   leaderboard: [],
   photos: [],
   totalParticipants: 0,
+  activeHostAnnouncement: null,
+  hostAnnouncements: [],
+  nextHostTransitionAt: null,
+  surveyRuntime: {
+    phase: "live",
+    closedAt: null,
+    finalizedAt: null,
+    finalResultsSnapshot: null,
+    finalBannerMessage: null,
+    gracePlayers: [],
+  },
+  surveyPhase: "live",
+  finalizedAt: null,
+  finalSurveySnapshot: null,
+  liveSurveyOverview: {
+    questionCount: 0,
+    answeredQuestionCount: 0,
+    totalParticipants: 0,
+    questions: [],
+  },
+  playersFinishingCurrentStep: 0,
+  playerMonitor: [],
 };
 
 async function fetchSnapshot() {
@@ -54,6 +82,100 @@ async function fetchSnapshot() {
   }
 
   return (await response.json()) as { snapshot: AdminSnapshot };
+}
+
+function toLocalDateTimeValue(iso: string | null) {
+  if (!iso) {
+    return "";
+  }
+
+  const date = new Date(iso);
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+}
+
+function fromLocalDateTimeValue(value: string) {
+  return new Date(value).toISOString();
+}
+
+function formatLocalDateTime(iso: string | null) {
+  if (!iso) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("he-IL", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
+function getHostStatusLabel(status: HostAnnouncementView["status"]) {
+  switch (status) {
+    case "active":
+      return "פעילה עכשיו";
+    case "scheduled":
+      return "מתוזמנת";
+    case "ended":
+      return "הסתיימה";
+    case "cancelled":
+      return "בוטלה";
+    default:
+      return status;
+  }
+}
+
+function getHostEndLabel(announcement: HostAnnouncementView) {
+  if (announcement.status === "cancelled") {
+    return "בוטלה לפני ההפעלה";
+  }
+
+  if (announcement.endsMode === "until_next") {
+    return announcement.effectiveEndAt
+      ? `עד ההודעה הבאה (${formatLocalDateTime(announcement.effectiveEndAt)})`
+      : "עד ההודעה הבאה";
+  }
+
+  return announcement.effectiveEndAt
+    ? `עד ${formatLocalDateTime(announcement.effectiveEndAt)}`
+    : "עד זמן הסיום";
+}
+
+function getSurveyPhaseLabel(phase: AdminSnapshot["surveyPhase"]) {
+  switch (phase) {
+    case "live":
+      return "פתוח למענה";
+    case "closing":
+      return "נסגר ומסיימים מסך נוכחי";
+    case "finalized":
+      return "תוצאות סופיות פורסמו";
+    default:
+      return phase;
+  }
+}
+
+function getSurveyPhaseTone(phase: AdminSnapshot["surveyPhase"]) {
+  switch (phase) {
+    case "live":
+      return "bg-[#e9f7ef] text-[#1c7c45]";
+    case "closing":
+      return "bg-[#fff4d8] text-[#946200]";
+    case "finalized":
+      return "bg-[#edf6ff] text-[#0f61d8]";
+    default:
+      return "bg-[#eef2f7] text-[#54708f]";
+  }
+}
+
+function getSurveyActionSuccessMessage(action: SurveyRuntimeAction) {
+  return action === "publish-final-results"
+    ? "התוצאות הסופיות פורסמו והסקר נסגר למענה חדש"
+    : "הסקר חזר למצב חי ונפתח שוב למענה חדש";
+}
+
+function getSurveyActionErrorMessage(action: SurveyRuntimeAction) {
+  return action === "publish-final-results"
+    ? "לא הצלחנו לפרסם את התוצאות הסופיות"
+    : "לא הצלחנו להחזיר את הסקר למצב חי";
 }
 
 export function AdminConsole({
@@ -67,9 +189,31 @@ export function AdminConsole({
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoUploadRecord | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [publicUrl, setPublicUrl] = useState("");
+  const [hostMessage, setHostMessage] = useState("");
+  const [hostPublishMode, setHostPublishMode] = useState<"now" | "schedule">("now");
+  const [hostScheduledFor, setHostScheduledFor] = useState("");
+  const [hostEndsMode, setHostEndsMode] =
+    useState<HostAnnouncementEndsMode>("until_next");
+  const [hostEndsAt, setHostEndsAt] = useState("");
+  const [hostBusy, setHostBusy] = useState(false);
+  const [hostError, setHostError] = useState<string | null>(null);
+  const [hostSuccess, setHostSuccess] = useState<string | null>(null);
+  const [surveyBusy, setSurveyBusy] = useState(false);
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+  const [surveySuccess, setSurveySuccess] = useState<string | null>(null);
+  const [surveyConfirmAction, setSurveyConfirmAction] =
+    useState<SurveyRuntimeAction | null>(null);
   const live = useLiveJson<{ snapshot: AdminSnapshot }>("/api/admin/snapshot", {
     initialData: { snapshot: initialSnapshot ?? EMPTY_ADMIN_SNAPSHOT },
-    tables: ["players", "photo_uploads", "admin_settings", "game_events"],
+    tables: [
+      "players",
+      "player_answers",
+      "photo_uploads",
+      "admin_settings",
+      "game_events",
+      "host_announcements",
+      "survey_runtime_state",
+    ],
     disabled: !authorized,
   });
   const snapshot = authorized ? live.data.snapshot : null;
@@ -118,14 +262,37 @@ export function AdminConsole({
     await live.refresh();
   };
 
-  const playerAction = async (payload: Record<string, unknown>) => {
-    await fetch("/api/admin/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  const runSurveyAction = async (action: SurveyRuntimeAction) => {
+    setSurveyBusy(true);
+    setSurveyError(null);
+    setSurveySuccess(null);
 
-    await live.refresh();
+    try {
+      const response = await fetch("/api/admin/survey-runtime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const json = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(json?.error || getSurveyActionErrorMessage(action));
+      }
+
+      await live.refresh();
+      setSurveySuccess(getSurveyActionSuccessMessage(action));
+      setSurveyConfirmAction(null);
+    } catch (caughtError) {
+      setSurveyError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : getSurveyActionErrorMessage(action),
+      );
+    } finally {
+      setSurveyBusy(false);
+    }
   };
 
   const photoAction = async (
@@ -139,6 +306,80 @@ export function AdminConsole({
     });
 
     await live.refresh();
+  };
+
+  const hostAction = async (payload: Record<string, unknown>) => {
+    setHostBusy(true);
+    setHostError(null);
+    setHostSuccess(null);
+
+    try {
+      const response = await fetch("/api/admin/host-announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const json = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(json?.error || "לא הצלחנו לשמור את הודעת המנחה");
+      }
+
+      await live.refresh();
+      setHostSuccess("עודכן בהצלחה");
+      return true;
+    } catch (caughtError) {
+      setHostError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "לא הצלחנו לשמור את הודעת המנחה",
+      );
+      return false;
+    } finally {
+      setHostBusy(false);
+    }
+  };
+
+  const createHostAnnouncement = async () => {
+    const trimmedMessage = hostMessage.trim();
+    if (!trimmedMessage) {
+      setHostError("צריך לכתוב הודעה לפני ששולחים");
+      return;
+    }
+
+    if (hostPublishMode === "schedule" && !hostScheduledFor) {
+      setHostError("צריך לבחור שעת הפעלה מדויקת");
+      return;
+    }
+
+    if (hostEndsMode === "at_time" && !hostEndsAt) {
+      setHostError("צריך לבחור שעת סיום");
+      return;
+    }
+
+    const scheduledFor =
+      hostPublishMode === "schedule" ? fromLocalDateTimeValue(hostScheduledFor) : null;
+    const endsAt = hostEndsMode === "at_time" ? fromLocalDateTimeValue(hostEndsAt) : null;
+
+    const ok = await hostAction({
+      action: "create",
+      message: trimmedMessage,
+      scheduledFor,
+      endsMode: hostEndsMode,
+      endsAt,
+    });
+
+    if (!ok) {
+      return;
+    }
+
+    setHostMessage("");
+    setHostPublishMode("now");
+    setHostScheduledFor("");
+    setHostEndsMode("until_next");
+    setHostEndsAt("");
   };
 
   if (!authorized || !snapshot) {
@@ -179,25 +420,57 @@ export function AdminConsole({
   const selectedPhotoItems = selectedPhoto
     ? [buildPhotoLightboxItem(selectedPhoto)]
     : [];
+  const activeHostAnnouncement = snapshot.activeHostAnnouncement;
+  const scheduledHostAnnouncements = snapshot.hostAnnouncements.filter(
+    (announcement) => announcement.status === "scheduled",
+  );
+  const previousHostAnnouncements = snapshot.hostAnnouncements
+    .filter(
+      (announcement) =>
+        announcement.status === "ended" || announcement.status === "cancelled",
+      )
+    .slice(0, 8);
+  const surveyIsLive = snapshot.surveyPhase === "live";
+  const surveyCanReopen = snapshot.surveyPhase !== "live";
+  const surveyConfirmTitle =
+    surveyConfirmAction === "publish-final-results"
+      ? "לסיים את הסקר ולהציג תוצאות סופיות?"
+      : surveyConfirmAction === "reopen-live-survey"
+        ? "להחזיר את הסקר למצב חי?"
+        : "";
+  const surveyConfirmBody =
+    surveyConfirmAction === "publish-final-results"
+      ? "הפעולה תעצור מענה חדש, תקפיא את תוצאות הלייב ותציג לכולם את התוצאה הרשמית. אפשר יהיה לבטל אחר כך ולהחזיר למצב חי."
+      : surveyConfirmAction === "reopen-live-survey"
+        ? "הפעולה תחזיר את הסקר למצב חי, תפתח שוב מענה חדש ותסיר את נעילת התוצאות הסופיות."
+        : "";
+  const surveyConfirmLabel =
+    surveyConfirmAction === "publish-final-results"
+      ? "כן, לסיים ולהציג תוצאות"
+      : surveyConfirmAction === "reopen-live-survey"
+        ? "כן, להחזיר למצב חי"
+        : "";
 
   return (
-    <div className="space-y-6">
-      <section className="glass-panel rounded-[34px] p-6 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-[#5d7ca3]">חדר הבקרה של הערב</p>
-            <h1 className="font-display text-3xl text-[#0f254a]">ניהול המשחק</h1>
-            <p className="mt-2 text-sm text-[#5d7ca3]">
+    <div className="flex flex-col gap-6">
+      <section className="glass-panel order-1 rounded-[34px] p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[0.95rem] text-[#5d7ca3]">חדר הבקרה של הערב</p>
+            <h1 className="mt-1 font-display text-[2rem] text-[#0f254a] sm:text-3xl">
+              ניהול המשחק
+            </h1>
+            <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
               מתעדכן בלייב בלי צורך בריענון ידני
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <button
               type="button"
               onClick={() => {
                 window.location.assign("/api/admin/export");
               }}
-              className="rounded-full bg-[#0f61d8] px-4 py-2 text-sm text-white"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0f61d8] px-4 text-base text-white sm:w-auto sm:text-sm"
             >
               ייצוא CSV
             </button>
@@ -206,7 +479,7 @@ export function AdminConsole({
               onClick={() => {
                 window.location.assign("/api/admin/photos-zip");
               }}
-              className="rounded-full bg-[#153968] px-4 py-2 text-sm text-white"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#153968] px-4 text-base text-white sm:w-auto sm:text-sm"
             >
               הורדת ZIP תמונות
             </button>
@@ -217,7 +490,7 @@ export function AdminConsole({
                 setAuthorized(false);
                 live.setData({ snapshot: EMPTY_ADMIN_SNAPSHOT });
               }}
-              className="rounded-full border border-[#cfe4ff] px-4 py-2 text-sm text-[#43638b]"
+              className="inline-flex h-11 w-full items-center justify-center rounded-full border border-[#cfe4ff] px-4 text-base text-[#43638b] sm:w-auto sm:text-sm"
             >
               התנתקות
             </button>
@@ -225,65 +498,123 @@ export function AdminConsole({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="order-2 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {[
-          { label: "משתתפים", value: snapshot.totalParticipants },
-          { label: "פעילים עכשיו", value: snapshot.activePlayers.length },
-          { label: "תמונות", value: snapshot.photos.length },
-          { label: "מקום ראשון", value: snapshot.leaderboard[0]?.name ?? "—" },
+          { label: "\u05DE\u05E9\u05EA\u05EA\u05E4\u05D9\u05DD", value: snapshot.totalParticipants },
+          { label: "\u05E4\u05E2\u05D9\u05DC\u05D9\u05DD \u05E2\u05DB\u05E9\u05D9\u05D5", value: snapshot.activePlayers.length },
+          {
+            label: "\u05E9\u05D0\u05DC\u05D5\u05EA \u05E2\u05DD \u05DE\u05E2\u05E0\u05D4",
+            value: snapshot.liveSurveyOverview.answeredQuestionCount,
+          },
+          {
+            label: "\u05DE\u05E1\u05D9\u05D9\u05DE\u05D9\u05DD \u05DE\u05E1\u05DA \u05E0\u05D5\u05DB\u05D7\u05D9",
+            value: snapshot.playersFinishingCurrentStep,
+          },
         ].map((item) => (
           <div key={item.label} className="glass-panel rounded-[28px] p-5">
-            <p className="text-sm text-[#5d7ca3]">{item.label}</p>
-            <p className="mt-2 font-display text-3xl text-[#0f254a]">
+            <p className="text-[0.92rem] leading-6 text-[#5d7ca3] sm:text-sm">
+              {item.label}
+            </p>
+            <p className="mt-2 font-display text-[2rem] text-[#0f254a] sm:text-3xl">
               {item.value}
             </p>
           </div>
         ))}
       </section>
-
-      <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        <div className="glass-panel rounded-[34px] p-6">
-          <p className="text-sm text-[#5d7ca3]">הגדרות חיות</p>
-          <div className="mt-4 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm text-[#5c7ca2]">טקסט פתיחה</span>
-              <textarea
-                defaultValue={snapshot.settings.introText}
-                name="introText"
-                autoComplete="off"
-                rows={4}
-                className="glass-panel w-full rounded-[24px] px-4 py-4 text-right"
-                onBlur={(event) => {
-                  void updateSettings({ introText: event.target.value });
-                }}
-              />
-            </label>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(["first", "second", "third"] as const).map((key) => (
-                <label key={key} className="block">
-                  <span className="mb-2 block text-sm text-[#5c7ca2]">
-                    פרס {key === "first" ? "1" : key === "second" ? "2" : "3"}
-                  </span>
-                  <input
-                    defaultValue={snapshot.settings.prizeLabels[key]}
-                    name={`prize-${key}`}
-                    autoComplete="off"
-                    className="glass-panel h-12 w-full rounded-[20px] px-4 text-right"
-                    onBlur={(event) => {
-                      void updateSettings({
-                        prizeLabels: {
-                          [key]: event.target.value,
-                        } as Partial<PrizeLabels>,
-                      });
-                    }}
-                  />
-                </label>
-              ))}
+      <section
+        className="glass-panel order-3 rounded-[34px] p-5 sm:p-6"
+        data-admin-survey-control-section
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1" data-admin-survey-copy>
+            <p className="text-[0.95rem] text-[#5d7ca3]">
+              {"\u05E1\u05E7\u05E8 \u05D7\u05D9"}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h2 className="font-display text-2xl text-[#0f254a]">
+                {"\u05E9\u05DC\u05D9\u05D8\u05D4 \u05E2\u05DC \u05E1\u05D2\u05D9\u05E8\u05EA \u05D4\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA"}
+              </h2>
+              <span
+                className={`rounded-full px-3 py-1 text-xs ${getSurveyPhaseTone(snapshot.surveyPhase)}`}
+              >
+              
+                {getSurveyPhaseLabel(snapshot.surveyPhase)}
+              </span>
             </div>
+            <p className="mt-3 max-w-3xl text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+              {"\u05DC\u05D7\u05D9\u05E6\u05D4 \u05E2\u05DC \u05E4\u05E8\u05E1\u05D5\u05DD \u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05E1\u05D5\u05E4\u05D9\u05D5\u05EA \u05DE\u05E7\u05E4\u05D9\u05D0\u05D4 \u05D0\u05EA \u05D4\u05D0\u05D7\u05D5\u05D6\u05D9\u05DD \u05D4\u05E8\u05E9\u05DE\u05D9\u05D9\u05DD, \u05D7\u05D5\u05E1\u05DE\u05EA \u05DE\u05E2\u05E0\u05D4 \u05D7\u05D3\u05E9,"}
+              {"\u05D5\u05DE\u05E9\u05D0\u05D9\u05E8\u05D4 \u05E8\u05E7 \u05DC\u05DE\u05D9 \u05E9\u05DB\u05D1\u05E8 \u05D1\u05EA\u05D5\u05DA \u05DE\u05E1\u05DA \u05DC\u05E1\u05D9\u05D9\u05DD \u05D0\u05D5\u05EA\u05D5."}
+            </p>
+            <p className="mt-2 max-w-3xl text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+              {surveyIsLive
+                ? "לפני הסגירה תופיע בקשת אישור, כדי שלא תהיה לחיצה בטעות."
+                : "אפשר לשחרר מכאן את הסיום ולהחזיר את הסקר למצב חי בכל רגע."}
+            </p>
+            {snapshot.finalizedAt ? (
+              <p className="mt-2 text-[0.95rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+                {"\u05D4\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA \u05E0\u05E0\u05E2\u05DC\u05D5 \u05D1-"}{formatLocalDateTime(snapshot.finalizedAt)}
+              </p>
+            ) : null}
+          </div>
+          <div className="grid w-full gap-3 sm:w-auto">
+            <button
+              type="button"
+              data-admin-publish-final-results
+              disabled={!surveyIsLive || surveyBusy}
+              onClick={() => setSurveyConfirmAction("publish-final-results")}
+              className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#f28c28] px-5 text-base font-medium text-white shadow-[0_18px_40px_rgba(242,140,40,0.28)] transition hover:bg-[#de7b18] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
+            >
+              {surveyBusy && surveyConfirmAction === "publish-final-results"
+                ? "מפרסמים..."
+                : "הצגת תוצאות סופיות וסגירת הסקר"}
+            </button>
+            {surveyCanReopen ? (
+              <button
+                type="button"
+                data-admin-reopen-live-results
+                disabled={surveyBusy}
+                onClick={() => setSurveyConfirmAction("reopen-live-survey")}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#11875d] px-5 text-base font-medium text-white shadow-[0_18px_40px_rgba(17,135,93,0.22)] transition hover:bg-[#0d714d] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
+              >
+                <RotateCcw size={16} />
+                {surveyBusy && surveyConfirmAction === "reopen-live-survey"
+                  ? "מחזירים ללייב..."
+                  : "החזר למצב חי"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4 min-h-[1.5rem] text-sm">
+          {surveyError ? <p className="text-[#a44848]">{surveyError}</p> : null}
+          {!surveyError && surveySuccess ? (
+            <p className="text-[#0f61d8]">{surveySuccess}</p>
+          ) : null}
+        </div>
+      </section>
+      <section
+        className="order-4 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]"
+        data-admin-tools-section
+      >
+        <div className="glass-panel rounded-[34px] p-5 sm:p-6">
+          <p className="text-[0.95rem] text-[#5d7ca3]">כלים מהירים</p>
+          <h2 className="mt-2 font-display text-2xl text-[#0f254a]">
+            שליטה קומפקטית למסך קטן
+          </h2>
+          <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+            השארנו כאן רק פעולות שבאמת שימושיות בזמן אמת בטלפון: צליל גלובלי,
+            פתיחת המשחק למשתתפים ו־QR מוכן לשיתוף.
+          </p>
 
+          <div className="mt-5 space-y-4">
             <label className="flex items-center justify-between rounded-[24px] bg-white/55 px-4 py-4">
-              <span className="text-[#143764]">צליל גלובלי</span>
+              <div className="min-w-0">
+                <span className="block text-base font-medium text-[#143764]">
+                  צליל גלובלי
+                </span>
+                <span className="mt-1 block text-[0.92rem] leading-6 text-[#5d7ca3] sm:text-sm">
+                  שליטה מיידית על סאונד המשתתפים
+                </span>
+              </div>
               <input
                 type="checkbox"
                 checked={snapshot.settings.globalSoundEnabled}
@@ -294,125 +625,390 @@ export function AdminConsole({
                 }}
               />
             </label>
+
+            <div className="rounded-[24px] bg-white/55 p-4">
+              <p className="text-base font-medium text-[#143764]">כניסה מהירה למשחק</p>
+              <p className="mt-2 break-all text-[0.95rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+                {publicUrl}
+              </p>
+              <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(publicUrl, "_blank", "noopener,noreferrer");
+                  }}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#0f61d8] px-4 text-base text-white sm:w-auto sm:text-sm"
+                >
+                  <FileDown size={16} />
+                  פתיחת המשחק
+                </button>
+                <a
+                  href={qrDataUrl}
+                  download="kochav-michael-qr.png"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#cfe4ff] px-4 text-base text-[#43638b] sm:w-auto sm:text-sm"
+                >
+                  <Download size={16} />
+                  הורדת QR
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="glass-panel rounded-[34px] p-6">
-          <div className="flex items-center gap-2 text-[#0f61d8]">
+        <div className="glass-panel rounded-[34px] p-5 sm:p-6">
+          <div className="flex flex-col gap-2 text-[#0f61d8] sm:flex-row sm:items-center">
             <QrCode size={20} />
             <p className="font-display text-xl">QR לכניסה למשחק</p>
           </div>
+          <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+            אפשר להציג מהמובייל או להוריד מיידית ולשתף למשתתפים.
+          </p>
           {qrDataUrl ? (
             <Image
               src={qrDataUrl}
               alt="QR"
               width={280}
               height={280}
-              className="mx-auto mt-6 rounded-[28px] bg-white p-4"
+              className="mx-auto mt-5 w-full max-w-[15rem] rounded-[28px] bg-white p-4 sm:max-w-[17.5rem]"
             />
           ) : null}
-          <div className="mt-4 flex gap-3">
-            <a
-              href={qrDataUrl}
-              download="kochav-michael-qr.png"
-              className="inline-flex items-center gap-2 rounded-full bg-[#0f61d8] px-4 py-2 text-sm text-white"
-            >
-              <Download size={16} />
-              הורדת QR
-            </a>
-            <button
-              type="button"
-              onClick={() => {
-                window.open(publicUrl, "_blank", "noopener,noreferrer");
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-[#cfe4ff] px-4 py-2 text-sm text-[#43638b]"
-            >
-              <FileDown size={16} />
-              פתיחת המשחק
-            </button>
+        </div>
+      </section>
+
+      <section
+        className="glass-panel order-6 rounded-[34px] p-5 sm:p-6"
+        data-admin-host-section
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[0.95rem] text-[#5d7ca3]">Host Mode</p>
+            <h2 className="font-display text-2xl text-[#0f254a]">הודעות מנחה חיות</h2>
+            <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+              שולחים מסר חי לכל המשתתפים או מתזמנים הודעה מדויקת להמשך הערב.
+            </p>
+          </div>
+          <div className="w-full rounded-full bg-[#edf6ff] px-4 py-2 text-base text-[#0f61d8] sm:w-auto sm:text-sm">
+            {snapshot.nextHostTransitionAt
+              ? `המעבר הבא: ${formatLocalDateTime(snapshot.nextHostTransitionAt)}`
+              : "אין מעבר מתוזמן כרגע"}
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[28px] bg-white/55 p-5">
+            <div className="space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm text-[#5c7ca2]">הודעה</span>
+                <textarea
+                  value={hostMessage}
+                  onChange={(event) => setHostMessage(event.target.value)}
+                  rows={4}
+                  maxLength={180}
+                  className="glass-panel w-full rounded-[24px] px-4 py-4 text-right"
+                  placeholder="לדוגמה: כולם מתכנסים ליד הבמה בעוד 5 דקות"
+                />
+              </label>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-[24px] bg-[#eff6ff] p-4">
+                  <p className="text-base font-medium text-[#143764]">מתי לשלוח</p>
+                  <div className="mt-3 grid gap-2">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                      <span>שליחה מיידית</span>
+                      <input
+                        type="radio"
+                        name="host-publish-mode"
+                        checked={hostPublishMode === "now"}
+                        onChange={() => setHostPublishMode("now")}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                      <span>תזמון לשעה מדויקת</span>
+                      <input
+                        type="radio"
+                        name="host-publish-mode"
+                        checked={hostPublishMode === "schedule"}
+                        onChange={() => setHostPublishMode("schedule")}
+                      />
+                    </label>
+                  </div>
+
+                  {hostPublishMode === "schedule" ? (
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-[0.95rem] text-[#5c7ca2] sm:text-sm">
+                        שעת הפעלה
+                      </span>
+                      <input
+                        value={hostScheduledFor}
+                        onChange={(event) => setHostScheduledFor(event.target.value)}
+                        type="datetime-local"
+                        className="glass-panel h-12 w-full rounded-[18px] px-4 text-right"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+
+                <div className="rounded-[24px] bg-[#eff6ff] p-4">
+                  <p className="text-base font-medium text-[#143764]">כמה זמן היא תישאר</p>
+                  <div className="mt-3 grid gap-2">
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                      <span>עד ההודעה הבאה</span>
+                      <input
+                        type="radio"
+                        name="host-ends-mode"
+                        checked={hostEndsMode === "until_next"}
+                        onChange={() => setHostEndsMode("until_next")}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-4 py-3 text-[0.98rem] text-[#274b79] sm:text-sm">
+                      <span>עד זמן סיום מוגדר</span>
+                      <input
+                        type="radio"
+                        name="host-ends-mode"
+                        checked={hostEndsMode === "at_time"}
+                        onChange={() => setHostEndsMode("at_time")}
+                      />
+                    </label>
+                  </div>
+
+                  {hostEndsMode === "at_time" ? (
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-[0.95rem] text-[#5c7ca2] sm:text-sm">
+                        שעת סיום
+                      </span>
+                      <input
+                        value={hostEndsAt}
+                        onChange={(event) => setHostEndsAt(event.target.value)}
+                        type="datetime-local"
+                        className="glass-panel h-12 w-full rounded-[18px] px-4 text-right"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-[0.95rem] text-[#5d7ca3] sm:text-sm">
+                  {hostMessage.trim().length}/180 תווים
+                </div>
+                <button
+                  type="button"
+                  disabled={hostBusy}
+                  onClick={() => void createHostAnnouncement()}
+                  className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#0f61d8] px-5 text-base text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
+                >
+                  {hostBusy ? "שולחים..." : "שמור ושלח"}
+                </button>
+              </div>
+
+              <div className="min-h-[1.5rem] text-sm">
+                {hostError ? <p className="text-[#a44848]">{hostError}</p> : null}
+                {!hostError && hostSuccess ? (
+                  <p className="text-[#0f61d8]">{hostSuccess}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-[28px] bg-white/55 p-5">
+              <h3 className="font-display text-xl text-[#0f254a]">הודעה פעילה עכשיו</h3>
+              {activeHostAnnouncement ? (
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-[22px] bg-[#edf6ff] px-4 py-4">
+                    <p className="text-base font-medium text-[#143764] sm:text-sm">
+                      {activeHostAnnouncement.message}
+                    </p>
+                    <p className="mt-2 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                      התחילה ב-{formatLocalDateTime(activeHostAnnouncement.startedAt)}
+                    </p>
+                    {activeHostAnnouncement.endsAt ? (
+                      <p className="mt-1 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                        מסתיימת ב-{formatLocalDateTime(activeHostAnnouncement.endsAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={hostBusy}
+                    onClick={() =>
+                      void hostAction({
+                        action: "stop-now",
+                        hostAnnouncementId: activeHostAnnouncement.id,
+                      })
+                    }
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#153968] px-4 text-base text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
+                  >
+                    סיים עכשיו
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-4 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+                  אין הודעת מערכת פעילה כרגע.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-[28px] bg-white/55 p-5">
+              <h3 className="font-display text-xl text-[#0f254a]">הודעות מתוזמנות</h3>
+              <div className="mt-4 space-y-3">
+                {scheduledHostAnnouncements.length === 0 ? (
+                  <p className="text-sm text-[#5d7ca3]">אין הודעות שמחכות להפעלה.</p>
+                ) : (
+                  scheduledHostAnnouncements.map((announcement) => (
+                    <article
+                      key={announcement.id}
+                      className="rounded-[22px] bg-[#edf6ff] px-4 py-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-medium text-[#143764] sm:text-sm">
+                            {announcement.message}
+                          </p>
+                          <p className="mt-2 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                            {getHostStatusLabel(announcement.status)} |{" "}
+                            {formatLocalDateTime(announcement.scheduledFor)}
+                          </p>
+                          <p className="mt-1 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                            {getHostEndLabel(announcement)}
+                          </p>
+                        </div>
+                        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                          <button
+                            type="button"
+                            disabled={hostBusy}
+                            onClick={() =>
+                              void hostAction({
+                                action: "activate-now",
+                                hostAnnouncementId: announcement.id,
+                              })
+                            }
+                            className="inline-flex h-10 items-center justify-center rounded-full bg-[#0f61d8] px-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            הפעל עכשיו
+                          </button>
+                          <button
+                            type="button"
+                            disabled={hostBusy}
+                            onClick={() =>
+                              void hostAction({
+                                action: "cancel",
+                                hostAnnouncementId: announcement.id,
+                              })
+                            }
+                            className="inline-flex h-10 items-center justify-center rounded-full border border-[#cfe4ff] px-3 text-sm text-[#43638b] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            בטל
+                          </button>
+                          <button
+                            type="button"
+                            disabled={hostBusy}
+                            onClick={() =>
+                              void hostAction({
+                                action: "delete",
+                                hostAnnouncementId: announcement.id,
+                              })
+                            }
+                            className="inline-flex h-10 items-center justify-center rounded-full border border-[#ffd7d7] px-3 text-sm text-[#a44848] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            מחק
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-[28px] bg-white/45 p-5">
+          <h3 className="font-display text-xl text-[#0f254a]">הודעות קודמות</h3>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {previousHostAnnouncements.length === 0 ? (
+              <p className="text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+                עדיין אין היסטוריית הודעות לערב הזה.
+              </p>
+            ) : (
+              previousHostAnnouncements.map((announcement) => (
+                <article
+                  key={announcement.id}
+                  className="rounded-[22px] bg-white/70 px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-medium text-[#143764] sm:text-sm">
+                        {announcement.message}
+                      </p>
+                      <p className="mt-2 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                        {getHostStatusLabel(announcement.status)} |{" "}
+                        {formatLocalDateTime(announcement.scheduledFor)}
+                      </p>
+                      <p className="mt-1 text-[0.9rem] leading-6 text-[#5d7ca3] sm:text-xs">
+                        {getHostEndLabel(announcement)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={hostBusy}
+                      onClick={() =>
+                        void hostAction({
+                          action: "delete",
+                          hostAnnouncementId: announcement.id,
+                        })
+                      }
+                      className="rounded-full border border-[#ffd7d7] px-3 py-2 text-xs text-[#a44848] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      מחק
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      <section className="glass-panel rounded-[34px] p-6">
-        <h2 className="font-display text-2xl text-[#0f254a]">שחקנים ולוח מלא</h2>
-        <div className="mt-5 space-y-3">
-          {snapshot.leaderboard.map((entry) => (
-            <div key={entry.playerId} className="rounded-[24px] bg-white/55 px-4 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium text-[#143764]">
-                    מקום {entry.rank} • {entry.name}
-                  </p>
-                  <p className="text-sm text-[#6484aa]">
-                    {formatPoints(entry.totalScore)} • {entry.correctAnswers} נכונות •{" "}
-                    {entry.photoMissionsCompleted} משימות
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void playerAction({
-                        action: "adjust",
-                        playerId: entry.playerId,
-                        delta: 100,
-                      })
-                    }
-                    className="rounded-full border border-[#cfe4ff] px-3 py-2 text-sm text-[#0f61d8]"
-                  >
-                    +100
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void playerAction({
-                        action: "adjust",
-                        playerId: entry.playerId,
-                        delta: -100,
-                      })
-                    }
-                    className="rounded-full border border-[#cfe4ff] px-3 py-2 text-sm text-[#43638b]"
-                  >
-                    -100
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void playerAction({
-                        action: "reset",
-                        playerId: entry.playerId,
-                      })
-                    }
-                    className="inline-flex items-center gap-2 rounded-full bg-[#edf6ff] px-3 py-2 text-sm text-[#0f61d8]"
-                  >
-                    <RotateCcw size={14} />
-                    איפוס
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <section className="order-5 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <AdminLiveSurveyDashboard
+          overview={snapshot.liveSurveyOverview}
+          surveyPhase={snapshot.surveyPhase}
+        />
+        <AdminPlayerMonitor players={snapshot.playerMonitor} />
       </section>
 
-      <section className="glass-panel rounded-[34px] p-6">
+
+      <section
+        className="glass-panel order-7 rounded-[34px] p-6"
+        data-admin-gallery-section
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-2xl text-[#0f254a]">ניהול תמונות</h2>
-            <p className="mt-2 text-sm text-[#5d7ca3]">
+            <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
               פריסה קומפקטית כדי לראות כמה תמונות ביחד. לחיצה על תמונה תפתח אותה
               להגדלה.
             </p>
           </div>
-          <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-sm text-[#0f61d8]">
+          <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-base text-[#0f61d8] sm:text-sm">
             {snapshot.photos.length} תמונות במאגר
           </div>
         </div>
 
-        <div className="admin-photo-grid mt-5">
+        {snapshot.photos.length > 1 ? (
+          <AdminRailHint label="גררו הצידה כדי לעבור בין התמונות" />
+        ) : null}
+
+        <div
+          className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid md:grid-cols-2 xl:grid-cols-4"
+          data-admin-gallery-rail
+        >
           {snapshot.photos.map((photo) => (
-            <div key={photo.id} className="overflow-hidden rounded-[22px] bg-white/55">
+            <div
+              key={photo.id}
+              className="min-w-0 shrink-0 basis-[72vw] snap-start overflow-hidden rounded-[22px] bg-white/55 md:basis-auto"
+            >
               <button
                 type="button"
                 onClick={() => setSelectedPhoto(photo)}
@@ -459,6 +1055,67 @@ export function AdminConsole({
           ))}
         </div>
       </section>
+
+      {surveyConfirmAction ? (
+        <div
+          data-admin-survey-confirm-modal
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-[#061423cc] px-4 py-6"
+        >
+          <div className="w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_30px_90px_rgba(5,18,36,0.3)]">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 rounded-full bg-[#fff1df] p-2 text-[#d77000]">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-[#5d7ca3]">אישור פעולה</p>
+                <h3 className="mt-1 font-display text-2xl text-[#0f254a]">
+                  {surveyConfirmTitle}
+                </h3>
+                <p className="mt-3 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+                  {surveyConfirmBody}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                data-admin-cancel-survey-action
+                disabled={surveyBusy}
+                onClick={() => setSurveyConfirmAction(null)}
+                className="inline-flex h-12 items-center justify-center rounded-full border border-[#cfe4ff] px-5 text-base text-[#43638b] disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+              >
+                לא, חזרה
+              </button>
+              <button
+                type="button"
+                data-admin-confirm-publish-final-results={
+                  surveyConfirmAction === "publish-final-results" ? true : undefined
+                }
+                data-admin-confirm-reopen-live-results={
+                  surveyConfirmAction === "reopen-live-survey" ? true : undefined
+                }
+                disabled={surveyBusy}
+                onClick={() => void runSurveyAction(surveyConfirmAction)}
+                className={`inline-flex h-12 items-center justify-center rounded-full px-5 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm ${
+                  surveyConfirmAction === "publish-final-results"
+                    ? "bg-[#f28c28] shadow-[0_18px_40px_rgba(242,140,40,0.28)]"
+                    : "bg-[#11875d] shadow-[0_18px_40px_rgba(17,135,93,0.22)]"
+                }`}
+              >
+                {surveyBusy ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoaderCircle className="animate-spin" size={16} />
+                    מעדכנים...
+                  </span>
+                ) : (
+                  surveyConfirmLabel
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Lightbox
         open={Boolean(selectedPhoto)}
