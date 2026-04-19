@@ -305,6 +305,20 @@ export function LandingPage({
                   </div>
                 </div>
 
+                <Link
+                  href="/gallery"
+                  onClick={() => {
+                    play("gallery");
+                  }}
+                  data-hero-gallery-cta
+                  className="hero-button-primary group inline-flex w-full max-w-2xl items-center justify-center gap-3 rounded-[26px] px-6 py-5 text-center text-base font-bold text-white shadow-[0_24px_60px_rgba(31,105,214,0.32)] transition hover:-translate-y-0.5 sm:text-lg"
+                >
+                  <Images size={24} className="shrink-0" />
+                  <span className="leading-7">
+                    צפו בגלריה הרשמית של המשחק והערב שלנו!
+                  </span>
+                </Link>
+
                 <div className="stage-panel-soft max-w-2xl rounded-[28px] p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="broadcast-chip">
@@ -474,24 +488,16 @@ export function LandingPage({
                     </p>
                   ) : null}
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-5 flex justify-center">
                     <Link
                       href="/results"
                       onClick={() => {
                         play("click");
                       }}
-                      className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
+                      className="hero-button-secondary inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-base font-bold"
                     >
+                      <Sparkles size={18} />
                       תוצאות המשחק
-                    </Link>
-                    <Link
-                      href="/gallery"
-                      onClick={() => {
-                        play("gallery");
-                      }}
-                      className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
-                    >
-                      לכל הגלריה
                     </Link>
                   </div>
                 </div>
