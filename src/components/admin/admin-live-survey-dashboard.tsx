@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminRailHint } from "@/components/admin/admin-rail-hint";
 import type { LiveSurveyOverview, SurveyPhase } from "@/lib/types";
 
 type AdminLiveSurveyDashboardProps = {
@@ -31,17 +30,15 @@ export function AdminLiveSurveyDashboard({
         </div>
       </div>
 
-      {overview.questions.length > 1 ? <AdminRailHint /> : null}
-
       <div
-        className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-2 md:block md:space-y-4"
+        className="mt-5 space-y-4"
         data-admin-results-rail
       >
         {overview.questions.map((question) => (
           <article
             key={question.questionId}
             data-admin-live-question-card
-            className="admin-card min-w-0 shrink-0 basis-[85vw] snap-start rounded-[28px] p-5 md:basis-auto"
+            className="admin-card min-w-0 rounded-[28px] p-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

@@ -46,8 +46,10 @@ export function useLiveJson<T>(
       }
 
       const json = (await response.json()) as T;
-      setData(json);
-      setError(null);
+      startTransition(() => {
+        setData(json);
+        setError(null);
+      });
     } catch {
       setError("טעינת נתונים נכשלה");
     } finally {

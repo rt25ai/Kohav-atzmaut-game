@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminRailHint } from "@/components/admin/admin-rail-hint";
 import type {
   AdminPlayerMonitorEntry,
   AdminPlayerMonitorStatus,
@@ -66,17 +65,15 @@ export function AdminPlayerMonitor({ players }: AdminPlayerMonitorProps) {
         </div>
       </div>
 
-      {players.length > 1 ? <AdminRailHint /> : null}
-
       <div
-        className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 md:block md:space-y-3"
+        className="mt-5 space-y-3"
         data-admin-player-monitor-rail
       >
         {players.map((player) => (
           <article
             key={player.playerId}
             data-admin-player-monitor-row
-            className="admin-card min-w-0 shrink-0 basis-[85vw] snap-start rounded-[26px] p-4 md:basis-auto"
+            className="admin-card min-w-0 rounded-[26px] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

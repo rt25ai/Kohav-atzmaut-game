@@ -17,7 +17,6 @@ import { useEffect, useState } from "react";
 
 import { AdminLiveSurveyDashboard } from "@/components/admin/admin-live-survey-dashboard";
 import { AdminPlayerMonitor } from "@/components/admin/admin-player-monitor";
-import { AdminRailHint } from "@/components/admin/admin-rail-hint";
 import { Lightbox } from "@/components/shared/lightbox";
 import { useLiveJson } from "@/hooks/use-live-json";
 import { buildPhotoLightboxItem } from "@/lib/game/photo-gallery";
@@ -996,18 +995,14 @@ export function AdminConsole({
           </div>
         </div>
 
-        {snapshot.photos.length > 1 ? (
-          <AdminRailHint label="גררו הצידה כדי לעבור בין התמונות" />
-        ) : null}
-
         <div
-          className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid md:grid-cols-2 xl:grid-cols-4"
+          className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-4"
           data-admin-gallery-rail
         >
           {snapshot.photos.map((photo) => (
             <div
               key={photo.id}
-              className="min-w-0 shrink-0 basis-[72vw] snap-start overflow-hidden rounded-[22px] bg-[#f3f8ff] md:basis-auto"
+              className="admin-card min-w-0 overflow-hidden rounded-[22px]"
             >
               <button
                 type="button"
