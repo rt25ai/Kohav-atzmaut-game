@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import {
   ArrowLeft,
   Camera,
@@ -187,7 +186,6 @@ export function PlayExperience() {
   const awaitingContinueRef = useRef(false);
   const pendingSessionAfterReviewRef = useRef<SessionSnapshot | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
-  const missionFileInputRef = useRef<HTMLInputElement | null>(null);
   const festiveSequenceRef = useRef<Record<FestiveEventName, number>>({
     "answer-saved": 0,
     "step-transition": 0,
@@ -977,64 +975,39 @@ export function PlayExperience() {
           <div className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-4">
               <input
-                ref={missionFileInputRef}
+                id="mission-photo-input"
                 data-mission-photo-input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 disabled={busy}
-                tabIndex={-1}
-                aria-hidden="true"
-                style={{
-                  position: "fixed",
-                  left: 0,
-                  top: 0,
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  pointerEvents: "none",
-                  zIndex: -1,
-                }}
+                className="sr-only"
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
                   const inputEl = event.target;
-                  inputEl.blur();
                   inputEl.value = "";
                   blurActiveElement();
-                  const scrollY = window.scrollY;
-                  requestAnimationFrame(() => {
-                    updatePreviewFromFile(file);
-                    requestAnimationFrame(() => {
-                      if (Math.abs(window.scrollY - scrollY) > 4) {
-                        window.scrollTo({ top: scrollY, behavior: "auto" });
-                      }
-                    });
-                  });
+                  updatePreviewFromFile(file);
                 }}
               />
-              <button
-                type="button"
+              <label
+                htmlFor="mission-photo-input"
                 data-mission-photo-picker
                 aria-label={selectedFile ? voice.replacePhotoLabel : voice.choosePhotoLabel}
-                disabled={busy}
-                onClick={(event) => {
-                  event.currentTarget.blur();
-                  blurActiveElement();
-                  missionFileInputRef.current?.click();
-                }}
+                aria-disabled={busy ? "true" : undefined}
                 className={`block w-full rounded-[28px] border bg-white/6 p-3 text-inherit transition ${
                   busy
-                    ? "cursor-progress border-white/10 opacity-80"
+                    ? "cursor-progress border-white/10 opacity-80 pointer-events-none"
                     : "cursor-pointer border-white/10 hover:border-[#84d6ff]/35 hover:bg-white/8"
                 }`}
               >
                 <div className="relative h-[260px] overflow-hidden rounded-[22px] bg-[#08172d] sm:h-[320px]">
                   {previewUrl ? (
-                    <Image
+                    <img
                       src={previewUrl}
                       alt="תצוגה מקדימה לתמונה שנבחרה"
-                      fill
-                      className="object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
+                      draggable={false}
                     />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -1054,7 +1027,7 @@ export function PlayExperience() {
                     </div>
                   ) : null}
                 </div>
-              </button>
+              </label>
             </div>
 
             <div className="space-y-4">

@@ -40,15 +40,15 @@ export function FestiveBurst({ cue, scopeKey }: FestiveBurstProps) {
   );
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}>
       {visibleCue ? (
         <motion.div
           key={`${scopeKey}-${visibleCue.copy}-${visibleCue.emojis.join("")}`}
           className="relative mt-4 overflow-visible pointer-events-none"
-          initial={{ opacity: 0, y: 10, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.98 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
         >
           <div
             data-festive-accent
