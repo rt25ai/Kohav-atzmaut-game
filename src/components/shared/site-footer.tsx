@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Globe, Sparkles } from "lucide-react";
+import { Globe } from "lucide-react";
 
 const websiteUrl = "https://www.rt-ai.co.il";
 const instagramUrl = "https://www.instagram.com/roital_ai";
@@ -42,18 +42,11 @@ export function SiteFooter() {
             />
           </div>
           <div>
-            <p className="font-display text-lg text-white">רועי טל</p>
-            <p className="text-sm text-[var(--text-dim)]">
-              חוויות דיגיטליות חכמות, מהוקצעות ומלאות אופי
-            </p>
+            <p className="font-display text-lg text-white">רועי טל - AI פשוט בעולם חכם</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <div className="broadcast-chip">
-            <Sparkles size={14} />
-            <span>אירוע קהילתי חי בעיצוב חגיגי</span>
-          </div>
           <Link
             href={websiteUrl}
             target="_blank"

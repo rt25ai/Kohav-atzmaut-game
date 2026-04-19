@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik, Secular_One } from "next/font/google";
 
 import { AppShell } from "@/components/shared/app-shell";
@@ -23,6 +23,14 @@ const APP_DESCRIPTION =
 const META_IMAGE_PATH = "/branding/site-meta.png";
 const ICON_IMAGE_PATH = "/branding/site-icon.png";
 const APPLE_ICON_PATH = "/branding/site-apple.png";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#041224",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(DEFAULT_PUBLIC_URL),

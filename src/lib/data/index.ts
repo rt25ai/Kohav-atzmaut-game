@@ -1,17 +1,25 @@
 import { IS_SUPABASE_ENABLED } from "@/lib/config";
 import {
+  localActivateHostAnnouncementNow,
   localAdjustPlayerPoints,
+  localCancelHostAnnouncement,
+  localCreateHostAnnouncement,
+  localDeleteHostAnnouncement,
   localExportPlayersCsv,
   localGetAdminSnapshot,
   localGetGallery,
   localGetLeaderboard,
   localGetPublicSnapshot,
+  localGetSurveyRuntime,
   localGetSession,
   localGetSummary,
   localGetSurveyResults,
   localHeartbeat,
   localModeratePhoto,
+  localPublishFinalSurveyResults,
+  localReopenSurveyToLive,
   localResetPlayer,
+  localStopHostAnnouncementNow,
   localStartGame,
   localSubmitExtraPhoto,
   localSubmitAnswer,
@@ -19,18 +27,26 @@ import {
   localUpdateSettings,
 } from "@/lib/data/local-repository";
 import {
+  supabaseActivateHostAnnouncementNow,
   supabaseAdjustPlayerPoints,
+  supabaseCancelHostAnnouncement,
+  supabaseCreateHostAnnouncement,
+  supabaseDeleteHostAnnouncement,
   supabaseExportPlayersCsv,
   supabaseGetAdminSnapshot,
   supabaseGetGallery,
   supabaseGetLeaderboard,
   supabaseGetPublicSnapshot,
+  supabaseGetSurveyRuntime,
   supabaseGetSession,
   supabaseGetSummary,
   supabaseGetSurveyResults,
   supabaseHeartbeat,
   supabaseModeratePhoto,
+  supabasePublishFinalSurveyResults,
+  supabaseReopenSurveyToLive,
   supabaseResetPlayer,
+  supabaseStopHostAnnouncementNow,
   supabaseStartGame,
   supabaseSubmitExtraPhoto,
   supabaseSubmitAnswer,
@@ -46,6 +62,9 @@ export const repository = {
   getSurveyResults: IS_SUPABASE_ENABLED
     ? supabaseGetSurveyResults
     : localGetSurveyResults,
+  getSurveyRuntime: IS_SUPABASE_ENABLED
+    ? supabaseGetSurveyRuntime
+    : localGetSurveyRuntime,
   getPublicSnapshot: IS_SUPABASE_ENABLED
     ? supabaseGetPublicSnapshot
     : localGetPublicSnapshot,
@@ -59,7 +78,28 @@ export const repository = {
   getAdminSnapshot: IS_SUPABASE_ENABLED
     ? supabaseGetAdminSnapshot
     : localGetAdminSnapshot,
+  publishFinalSurveyResults: IS_SUPABASE_ENABLED
+    ? supabasePublishFinalSurveyResults
+    : localPublishFinalSurveyResults,
+  reopenSurveyToLive: IS_SUPABASE_ENABLED
+    ? supabaseReopenSurveyToLive
+    : localReopenSurveyToLive,
   updateSettings: IS_SUPABASE_ENABLED ? supabaseUpdateSettings : localUpdateSettings,
+  createHostAnnouncement: IS_SUPABASE_ENABLED
+    ? supabaseCreateHostAnnouncement
+    : localCreateHostAnnouncement,
+  activateHostAnnouncementNow: IS_SUPABASE_ENABLED
+    ? supabaseActivateHostAnnouncementNow
+    : localActivateHostAnnouncementNow,
+  stopHostAnnouncementNow: IS_SUPABASE_ENABLED
+    ? supabaseStopHostAnnouncementNow
+    : localStopHostAnnouncementNow,
+  cancelHostAnnouncement: IS_SUPABASE_ENABLED
+    ? supabaseCancelHostAnnouncement
+    : localCancelHostAnnouncement,
+  deleteHostAnnouncement: IS_SUPABASE_ENABLED
+    ? supabaseDeleteHostAnnouncement
+    : localDeleteHostAnnouncement,
   resetPlayer: IS_SUPABASE_ENABLED ? supabaseResetPlayer : localResetPlayer,
   adjustPlayerPoints: IS_SUPABASE_ENABLED
     ? supabaseAdjustPlayerPoints

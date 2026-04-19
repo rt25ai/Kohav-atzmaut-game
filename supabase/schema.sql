@@ -131,12 +131,51 @@ create table if not exists public.admin_settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.host_announcements (
+  id text primary key,
+  message text not null,
+  scheduled_for timestamptz not null,
+  ends_mode text not null default 'until_next',
+  ends_at timestamptz,
+  cleared_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.survey_runtime_state (
+  id text primary key,
+  phase text not null default 'live',
+  closed_at timestamptz,
+  finalized_at timestamptz,
+  final_results_snapshot jsonb,
+  final_banner_message text,
+  grace_players jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.host_announcements
+drop constraint if exists host_announcements_ends_mode_check;
+
+alter table public.host_announcements
+add constraint host_announcements_ends_mode_check
+check (ends_mode in ('until_next', 'at_time'));
+
+alter table public.survey_runtime_state
+drop constraint if exists survey_runtime_state_phase_check;
+
+alter table public.survey_runtime_state
+add constraint survey_runtime_state_phase_check
+check (phase in ('live', 'closing', 'finalized'));
+
 create index if not exists players_total_score_idx on public.players (total_score desc, updated_at asc);
 create index if not exists players_last_seen_idx on public.players (last_seen_at desc);
 create index if not exists player_answers_player_idx on public.player_answers (player_id, step_index);
 create index if not exists photo_uploads_created_idx on public.photo_uploads (created_at desc);
 create index if not exists photo_uploads_hidden_idx on public.photo_uploads (hidden);
 create index if not exists game_events_created_idx on public.game_events (created_at desc);
+create index if not exists host_announcements_scheduled_idx on public.host_announcements (scheduled_for desc);
+create index if not exists host_announcements_cleared_idx on public.host_announcements (cleared_at);
 
 drop trigger if exists questions_updated_at on public.questions;
 create trigger questions_updated_at
@@ -162,6 +201,18 @@ before update on public.admin_settings
 for each row
 execute function public.handle_updated_at();
 
+drop trigger if exists host_announcements_updated_at on public.host_announcements;
+create trigger host_announcements_updated_at
+before update on public.host_announcements
+for each row
+execute function public.handle_updated_at();
+
+drop trigger if exists survey_runtime_state_updated_at on public.survey_runtime_state;
+create trigger survey_runtime_state_updated_at
+before update on public.survey_runtime_state
+for each row
+execute function public.handle_updated_at();
+
 alter table public.questions enable row level security;
 alter table public.photo_missions enable row level security;
 alter table public.players enable row level security;
@@ -169,6 +220,8 @@ alter table public.player_answers enable row level security;
 alter table public.photo_uploads enable row level security;
 alter table public.game_events enable row level security;
 alter table public.admin_settings enable row level security;
+alter table public.host_announcements enable row level security;
+alter table public.survey_runtime_state enable row level security;
 
 drop policy if exists "public read questions" on public.questions;
 create policy "public read questions"
@@ -203,6 +256,18 @@ using (true);
 drop policy if exists "public read settings" on public.admin_settings;
 create policy "public read settings"
 on public.admin_settings
+for select
+using (true);
+
+drop policy if exists "public read host announcements" on public.host_announcements;
+create policy "public read host announcements"
+on public.host_announcements
+for select
+using (true);
+
+drop policy if exists "public read survey runtime state" on public.survey_runtime_state;
+create policy "public read survey runtime state"
+on public.survey_runtime_state
 for select
 using (true);
 
@@ -256,5 +321,25 @@ begin
       and tablename = 'admin_settings'
   ) then
     alter publication supabase_realtime add table public.admin_settings;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'host_announcements'
+  ) then
+    alter publication supabase_realtime add table public.host_announcements;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'survey_runtime_state'
+  ) then
+    alter publication supabase_realtime add table public.survey_runtime_state;
   end if;
 end $$;

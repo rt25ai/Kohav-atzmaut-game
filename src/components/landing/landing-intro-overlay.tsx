@@ -1,8 +1,8 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect } from "react";
 
 import {
   LANDING_INTRO_ASSET_PATH,
@@ -110,7 +110,7 @@ export function LandingIntroOverlayFrame({
 export function LandingIntroOverlay({ onComplete }: LandingIntroOverlayProps) {
   const reduceMotion = Boolean(useReducedMotion());
 
-  useEffect(() => {
+  React.useEffect(() => {
     const timeoutId = window.setTimeout(onComplete, LANDING_INTRO_TOTAL_MS);
     return () => window.clearTimeout(timeoutId);
   }, [onComplete]);

@@ -1,6 +1,7 @@
 export const APP_NAME = "כוכבניק - סקר הכי ישראלי שיש";
 export const APP_SHORT_NAME = "כוכבניק";
 export const STORAGE_SESSION_KEY = "kochav-michael-active-player";
+export const STORAGE_SESSION_SNAPSHOT_KEY = "kochav-michael-active-session";
 export const STORAGE_SOUND_KEY = "kochav-michael-sound-enabled";
 export const STORAGE_PENDING_UPLOADS_KEY = "kochav-michael-pending-uploads";
 

@@ -134,8 +134,17 @@ const db: LocalDatabase = {
   answers,
   photos: [],
   events: [],
+  hostAnnouncements: [],
   questions,
   missions: [],
+  surveyRuntime: {
+    phase: "live",
+    closedAt: null,
+    finalizedAt: null,
+    finalResultsSnapshot: null,
+    finalBannerMessage: null,
+    gracePlayers: [],
+  },
 };
 
 const summary = buildSummarySnapshot(db, player);

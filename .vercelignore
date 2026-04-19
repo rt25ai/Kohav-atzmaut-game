@@ -1,0 +1,7 @@
+.next
+.tmp-*
+test-results
+playwright-report
+dev-server.log
+dev-server.err.log
+hf_*.png
