@@ -43,7 +43,7 @@ export function LiveAnswerResultsChart({
       </div>
 
       <div
-        className="live-results-grid mt-5 gap-3 sm:gap-4"
+        className="live-results-grid mt-5 gap-2 sm:gap-4"
         style={
           {
             ["--live-cols" as string]: String(questionResult.options.length),
@@ -58,23 +58,25 @@ export function LiveAnswerResultsChart({
               key={`${questionResult.questionId}-${option.optionId}`}
               data-live-results-option={option.optionId}
               data-player-choice={option.isPlayerChoice}
-              className={`rounded-[24px] border px-3 py-4 text-center sm:px-4 ${
+              className={`flex flex-col rounded-[18px] border px-2 py-3 text-center sm:rounded-[24px] sm:px-4 sm:py-4 ${
                 option.isPlayerChoice
                   ? "border-[#9de0ff]/55 bg-[linear-gradient(180deg,rgba(16,75,123,0.54),rgba(10,42,70,0.56))]"
                   : "border-white/10 bg-white/5"
               }`}
             >
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-dim)]">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)] sm:text-xs sm:tracking-[0.24em]">
                 {option.optionId}
               </p>
-              <p className="mt-2 text-sm leading-6 text-white">{option.label}</p>
+              <p className="mt-1.5 line-clamp-2 text-[0.78rem] leading-snug text-white sm:mt-2 sm:line-clamp-none sm:text-sm sm:leading-6">
+                {option.label}
+              </p>
 
-              <div className="mt-4 flex h-40 items-end justify-center rounded-[20px] border border-white/8 bg-[#071427]/78 p-3">
+              <div className="mt-3 flex h-24 items-end justify-center rounded-[14px] border border-white/8 bg-[#071427]/78 p-2 sm:mt-4 sm:h-40 sm:rounded-[20px] sm:p-3">
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: `${barHeight}%` }}
                   transition={{ duration: 0.45, delay: index * 0.05 }}
-                  className={`w-full rounded-[16px] ${
+                  className={`w-full rounded-[10px] sm:rounded-[16px] ${
                     option.isPlayerChoice
                       ? "bg-[linear-gradient(180deg,#ffe08a_0%,#76d6ff_18%,#1e93e8_100%)] shadow-[0_0_18px_rgba(122,215,255,0.32)]"
                       : option.isTopChoice
@@ -84,23 +86,23 @@ export function LiveAnswerResultsChart({
                 />
               </div>
 
-              <p className="mt-4 font-display text-3xl text-white">
+              <p className="mt-2 font-display text-xl text-white sm:mt-4 sm:text-3xl">
                 {option.percentage}%
               </p>
 
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-[10px] sm:mt-2 sm:gap-2 sm:text-xs">
                 {option.isPlayerChoice ? (
-                  <span className="rounded-full bg-[#67cbff] px-3 py-1 text-[#031223]">
-                    הבחירה שלך
+                  <span className="rounded-full bg-[#67cbff] px-2 py-0.5 text-[#031223] sm:px-3 sm:py-1">
+                    שלך
                   </span>
                 ) : null}
                 {option.isTopChoice ? (
-                  <span className="rounded-full bg-[rgba(255,217,135,0.18)] px-3 py-1 text-[#ffe29b]">
-                    מוביל כרגע
+                  <span className="rounded-full bg-[rgba(255,217,135,0.18)] px-2 py-0.5 text-[#ffe29b] sm:px-3 sm:py-1">
+                    מוביל
                   </span>
                 ) : null}
-                <span className="rounded-full bg-white/8 px-3 py-1 text-[var(--text-soft)]">
-                  {option.voteCount} בחרו
+                <span className="rounded-full bg-white/8 px-2 py-0.5 text-[var(--text-soft)] sm:px-3 sm:py-1">
+                  {option.voteCount}
                 </span>
               </div>
             </article>

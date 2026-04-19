@@ -35,7 +35,6 @@
 
 html {
   scroll-behavior: auto;
-  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   font-size: 16px;
@@ -51,7 +50,6 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overscroll-behavior-y: contain;
   background:
     radial-gradient(circle at top left, rgba(74, 176, 255, 0.18), transparent 26%),
     radial-gradient(circle at top right, rgba(255, 217, 135, 0.08), transparent 18%),
@@ -304,13 +302,7 @@ textarea:focus-visible {
 
 .live-results-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 640px) {
-  .live-results-grid {
-    grid-template-columns: repeat(var(--live-cols, 2), minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(var(--live-cols, 3), minmax(0, 1fr));
 }
 
 .gallery-player-grid {

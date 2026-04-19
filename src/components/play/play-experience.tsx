@@ -266,11 +266,18 @@ export function PlayExperience() {
         ? `mission:${session.currentStep.missionId}`
         : "idle";
 
+  const lastScrolledStepKeyRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (currentStepKey === "idle") {
       return;
     }
 
+    if (lastScrolledStepKeyRef.current === currentStepKey) {
+      return;
+    }
+
+    lastScrolledStepKeyRef.current = currentStepKey;
+    blurActiveElement();
     scrollToViewportTop();
   }, [currentStepKey]);
 
@@ -754,8 +761,9 @@ export function PlayExperience() {
       {session.resultsPromptRequired ? (
         <motion.section
           key="survey-results-prompt"
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 }}
           data-play-results-closed
           className="stage-panel rounded-[36px] p-5 sm:p-8"
         >
@@ -819,8 +827,9 @@ export function PlayExperience() {
       {currentQuestion ? (
         <motion.section
           key={currentStepKey}
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 }}
           className="stage-panel rounded-[36px] p-5 sm:p-8"
         >
           <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -934,8 +943,9 @@ export function PlayExperience() {
       {currentMission ? (
         <motion.section
           key={currentStepKey}
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 }}
           className="stage-panel rounded-[36px] p-5 sm:p-8"
         >
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -973,11 +983,33 @@ export function PlayExperience() {
                 accept="image/*"
                 capture="environment"
                 disabled={busy}
-                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{
+                  position: "fixed",
+                  left: 0,
+                  top: 0,
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                  zIndex: -1,
+                }}
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
-                  updatePreviewFromFile(file);
-                  event.target.value = "";
+                  const inputEl = event.target;
+                  inputEl.blur();
+                  inputEl.value = "";
+                  blurActiveElement();
+                  const scrollY = window.scrollY;
+                  requestAnimationFrame(() => {
+                    updatePreviewFromFile(file);
+                    requestAnimationFrame(() => {
+                      if (Math.abs(window.scrollY - scrollY) > 4) {
+                        window.scrollTo({ top: scrollY, behavior: "auto" });
+                      }
+                    });
+                  });
                 }}
               />
               <button
@@ -987,6 +1019,7 @@ export function PlayExperience() {
                 disabled={busy}
                 onClick={(event) => {
                   event.currentTarget.blur();
+                  blurActiveElement();
                   missionFileInputRef.current?.click();
                 }}
                 className={`block w-full rounded-[28px] border bg-white/6 p-3 text-inherit transition ${
