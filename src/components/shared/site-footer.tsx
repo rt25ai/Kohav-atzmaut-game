@@ -33,19 +33,20 @@ export function SiteFooter() {
       <div className="footer-credit-panel mx-auto max-w-lg rounded-[32px] px-6 py-8 sm:px-10">
         <div className="flex flex-col items-center gap-5 text-center">
 
-          <div className="footer-logo-ring">
-            <Image
-              src={footerLogoSrc}
-              alt="לוגו רועי טל AI"
-              fill
-              className="object-contain"
-              sizes="72px"
-            />
-          </div>
-
-          <div>
-            <p className="footer-brand-name">רועי טל</p>
-            <p className="footer-brand-sub">AI פשוט בעולם חכם</p>
+          <div className="flex items-center gap-4 text-right">
+            <div className="footer-logo-ring">
+              <Image
+                src={footerLogoSrc}
+                alt="לוגו רועי טל AI"
+                fill
+                className="object-contain"
+                sizes="72px"
+              />
+            </div>
+            <div>
+              <p className="footer-brand-name">רועי טל</p>
+              <p className="footer-brand-sub">AI פשוט בעולם חכם</p>
+            </div>
           </div>
 
           <div className="footer-divider" aria-hidden="true" />
