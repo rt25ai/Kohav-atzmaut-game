@@ -908,14 +908,17 @@ export async function supabaseGetSession(playerId: string): Promise<SessionSnaps
 
 export async function supabaseGetSummary(playerId: string): Promise<SummarySnapshot> {
   const client = getClient();
-  const { settings, players, questions, missions, player, answers, surveyRuntime } =
-    await fetchSessionDb(client, playerId);
+  const [{ settings, players, questions, missions, player, surveyRuntime }, allAnswers] =
+    await Promise.all([
+      fetchSessionDb(client, playerId),
+      fetchAllAnswers(client),
+    ]);
 
   return buildSummarySnapshot(
     {
       settings,
       players,
-      answers,
+      answers: allAnswers,
       photos: [],
       events: [],
       hostAnnouncements: [],
@@ -929,14 +932,17 @@ export async function supabaseGetSummary(playerId: string): Promise<SummarySnaps
 
 export async function supabaseGetSurveyResults(playerId: string) {
   const client = getClient();
-  const { settings, players, questions, missions, player, answers, surveyRuntime } =
-    await fetchSessionDb(client, playerId);
+  const [{ settings, players, questions, missions, player, surveyRuntime }, allAnswers] =
+    await Promise.all([
+      fetchSessionDb(client, playerId),
+      fetchAllAnswers(client),
+    ]);
 
   return buildSurveyResultsSnapshot(
     {
       settings,
       players,
-      answers,
+      answers: allAnswers,
       photos: [],
       events: [],
       hostAnnouncements: [],

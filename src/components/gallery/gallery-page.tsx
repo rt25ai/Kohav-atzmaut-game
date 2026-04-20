@@ -111,7 +111,7 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
                   setSelectedPlayerId(group.playerId);
                   setSelectedIndex(0);
                 }}
-                className="stage-panel group overflow-hidden rounded-[18px] text-right sm:rounded-[24px]"
+                className="gallery-player-tile group text-right"
               >
                 <div className="relative aspect-square overflow-hidden">
                   <Image
@@ -122,12 +122,12 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
                     sizes="(max-width: 640px) 33vw, (max-width: 1024px) 33vw, 25vw"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(2,10,18,0.92))]" />
-                  <div className="absolute inset-x-0 bottom-0 px-2 pb-2 pt-6 sm:px-3 sm:pb-3 sm:pt-8">
-                    <p className="line-clamp-1 font-display text-sm text-white sm:text-lg">
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(2,10,18,0.94))]" />
+                  <div className="absolute inset-x-0 bottom-0 px-1.5 pb-1.5 pt-4 sm:px-3 sm:pb-3 sm:pt-8">
+                    <p className="line-clamp-1 font-display text-[11px] leading-tight text-white sm:text-lg">
                       {group.playerName}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-[var(--text-soft)] sm:text-xs">
+                    <p className="mt-0.5 text-[9px] text-[var(--text-soft)] sm:text-xs">
                       {group.photos.length} תמונות
                     </p>
                   </div>

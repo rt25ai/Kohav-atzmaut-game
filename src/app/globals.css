@@ -307,7 +307,7 @@ textarea:focus-visible {
 
 .gallery-player-grid {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.4rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -322,6 +322,19 @@ textarea:focus-visible {
   .gallery-player-grid {
     gap: 1rem;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.gallery-player-tile {
+  background: linear-gradient(180deg, rgba(10, 28, 53, 0.7), rgba(6, 19, 40, 0.6));
+  border: 1px solid rgba(157, 224, 255, 0.18);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .gallery-player-tile {
+    border-radius: 22px;
   }
 }
 

@@ -82,15 +82,18 @@ function scrollToViewportTop() {
     return;
   }
 
-  const scrollingElement =
-    document.scrollingElement || document.documentElement || document.body;
+  const performScroll = () => {
+    const scrollingElement =
+      document.scrollingElement || document.documentElement || document.body;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (scrollingElement && "scrollTop" in scrollingElement) {
+      scrollingElement.scrollTop = 0;
+    }
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
 
-  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  if (scrollingElement && "scrollTop" in scrollingElement) {
-    scrollingElement.scrollTop = 0;
-  }
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
+  requestAnimationFrame(() => requestAnimationFrame(performScroll));
 }
 
 function blurActiveElement() {
@@ -216,6 +219,17 @@ export function PlayExperience() {
   useEffect(() => {
     pendingSessionAfterReviewRef.current = pendingSessionAfterReview;
   }, [pendingSessionAfterReview]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("scrollRestoration" in window.history)) {
+      return;
+    }
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
 
   useEffect(() => {
     const stored = getStoredPlayerId();
@@ -606,6 +620,7 @@ export function PlayExperience() {
       return;
     }
 
+    blurActiveElement();
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -981,11 +996,23 @@ export function PlayExperience() {
                 accept="image/*"
                 capture="environment"
                 disabled={busy}
-                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{
+                  position: "fixed",
+                  left: 0,
+                  top: 0,
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                  zIndex: -1,
+                }}
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
                   const inputEl = event.target;
                   inputEl.value = "";
+                  inputEl.blur();
                   blurActiveElement();
                   updatePreviewFromFile(file);
                 }}
