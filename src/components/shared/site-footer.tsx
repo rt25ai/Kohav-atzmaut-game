@@ -56,15 +56,20 @@ export function SiteFooter() {
             <Globe size={16} />
             www.rt-ai.co.il
           </Link>
-          <Link
-            href={instagramUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-[var(--text-main)]"
-          >
-            <InstagramGlyph />
-            @roital_ai
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={instagramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-[var(--text-main)]"
+            >
+              <InstagramGlyph />
+              @roital_ai
+            </Link>
+            <span className="text-xs text-[var(--text-dim)] sm:text-sm">
+              מוזמנים לפרגן ב-Follow אם נהנתם 😃
+            </span>
+          </div>
         </div>
       </div>
     </footer>

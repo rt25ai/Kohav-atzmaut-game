@@ -904,7 +904,12 @@ export function PlayExperience() {
                         data-pending-live-results-message={
                           visualMeta.state === "pending" ? "true" : undefined
                         }
-                        className={`block text-sm ${visualMeta.helperClassName}`}
+                        className={`block text-sm ${
+                          visualMeta.state === "pending" ||
+                          visualMeta.state === "confirmed"
+                            ? "live-note-pulse"
+                            : visualMeta.helperClassName
+                        }`}
                       >
                         {liveResultsHelperText}
                       </span>

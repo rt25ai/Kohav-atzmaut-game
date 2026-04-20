@@ -45,7 +45,10 @@ export function LiveAnswerResultsChart({
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="broadcast-chip">
+          <span className={`broadcast-chip ${isSummary ? "" : "on-air-chip"}`}>
+            {isSummary ? null : (
+              <span className="on-air-dot" aria-hidden="true" />
+            )}
             <Sparkles size={14} />
             {chipCopy}
           </span>

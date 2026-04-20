@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Home, Radio, Sparkles } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { ArrowRight, Home, Radio, Sparkles } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { SoundToggle } from "@/components/shared/sound-toggle";
@@ -26,7 +26,16 @@ type LivePublicSnapshot = PublicSnapshot & { mode?: string };
 
 export function BrandHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { setGlobalSoundEnabled } = useSound();
+
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
   const currentTitle = titles[pathname] ?? "שידור חי";
   const { data, refresh } = useLiveJson<LivePublicSnapshot>("/api/public/snapshot", {
     initialData: {
@@ -123,21 +132,34 @@ export function BrandHeader() {
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <div className="broadcast-chip min-w-0 px-2.5 py-1.5 text-[0.7rem]">
+              <div className="broadcast-chip on-air-chip min-w-0 px-2.5 py-1.5 text-[0.7rem]">
+                <span className="on-air-dot" aria-hidden="true" />
                 <Radio size={13} />
                 <span>{participantsLabel}</span>
               </div>
 
               <div className="flex items-center gap-2">
                 {pathname !== "/" ? (
-                  <Link
-                    href="/?return=home"
-                    data-home-link
-                    className="hero-button-secondary inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.7rem] font-medium"
-                  >
-                    <Home size={14} />
-                    חזרה
-                  </Link>
+                  <>
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      data-back-link
+                      aria-label="חזרה למסך הקודם"
+                      className="hero-button-secondary inline-flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[0.7rem] font-medium"
+                    >
+                      <ArrowRight size={14} />
+                      חזור
+                    </button>
+                    <Link
+                      href="/?return=home"
+                      data-home-link
+                      className="hero-button-secondary inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.7rem] font-medium"
+                    >
+                      <Home size={14} />
+                      בית
+                    </Link>
+                  </>
                 ) : null}
 
                 <SoundToggle />
@@ -165,7 +187,8 @@ export function BrandHeader() {
               dir="rtl"
               className="flex min-w-0 items-center justify-center gap-3 text-center"
             >
-              <div className="hidden md:flex broadcast-chip">
+              <div className="hidden md:flex broadcast-chip on-air-chip">
+                <span className="on-air-dot" aria-hidden="true" />
                 <Radio size={14} />
                 <span>{activePlayersLabel}</span>
               </div>
@@ -185,14 +208,26 @@ export function BrandHeader() {
               </div>
 
               {pathname !== "/" ? (
-                <Link
-                  href="/?return=home"
-                  data-home-link
-                  className="hero-button-secondary inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-medium sm:text-sm"
-                >
-                  <Home size={15} />
-                  חזרה לבית
-                </Link>
+                <>
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    data-back-link
+                    aria-label="חזרה למסך הקודם"
+                    className="hero-button-secondary inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-medium sm:text-sm"
+                  >
+                    <ArrowRight size={15} />
+                    חזור
+                  </button>
+                  <Link
+                    href="/?return=home"
+                    data-home-link
+                    className="hero-button-secondary inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-medium sm:text-sm"
+                  >
+                    <Home size={15} />
+                    חזרה לבית
+                  </Link>
+                </>
               ) : null}
 
               <SoundToggle />

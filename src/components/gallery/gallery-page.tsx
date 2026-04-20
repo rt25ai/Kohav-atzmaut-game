@@ -71,7 +71,8 @@ export function GalleryPage({ initialPhotos }: GalleryPageProps) {
               הגלריה של כל משתתף, ולדפדף בנוחות בין כל התמונות שעלו מהאירוע.
             </p>
           </div>
-          <div className="broadcast-chip">
+          <div className="broadcast-chip on-air-chip">
+            <span className="on-air-dot" aria-hidden="true" />
             <Radio size={14} />
             {data.photos.length} תמונות באוויר
           </div>
