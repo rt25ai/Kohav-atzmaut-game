@@ -393,6 +393,95 @@ textarea:focus-visible {
   }
 }
 
+/* Festive landing headline cluster */
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(132, 214, 255, 0.18),
+    rgba(255, 217, 135, 0.18)
+  );
+  border: 1px solid rgba(255, 217, 135, 0.4);
+  color: #ffe7b0;
+  font-size: 0.92rem;
+  letter-spacing: 0.22em;
+  text-transform: none;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 8px 26px rgba(132, 214, 255, 0.16);
+}
+
+.hero-eyebrow-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffd987;
+  box-shadow: 0 0 12px rgba(255, 217, 135, 0.85);
+}
+
+.hero-festive-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.012em;
+  font-size: clamp(4.2rem, 11vw, 8.4rem);
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #c8e7ff 45%,
+    #ffd987 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow:
+    0 0 32px rgba(132, 214, 255, 0.32),
+    0 0 64px rgba(255, 217, 135, 0.18);
+  filter: drop-shadow(0 18px 38px rgba(31, 105, 214, 0.32));
+}
+
+.hero-festive-lede {
+  font-size: clamp(1.18rem, 2.4vw, 1.55rem);
+  line-height: 1.65;
+  font-weight: 600;
+  color: #f1f7ff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.hero-festive-sub {
+  font-size: clamp(1.02rem, 1.9vw, 1.2rem);
+  line-height: 1.75;
+  color: #d8e7fb;
+}
+
+.hero-festive-divider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #ffd987;
+  font-size: 0.85rem;
+  letter-spacing: 0.32em;
+}
+
+.hero-festive-divider::before,
+.hero-festive-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 217, 135, 0.55),
+    transparent
+  );
+  min-width: 1.6rem;
+}
+
 /* Gallery hero CTA — glowing, attention-grabbing button */
 .gallery-cta-shell {
   position: relative;
@@ -401,25 +490,6 @@ textarea:focus-visible {
   max-width: 42rem;
   border-radius: 30px;
   isolation: isolate;
-}
-
-.gallery-cta-shell::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 36px;
-  background: conic-gradient(
-    from 0deg,
-    #84d6ff,
-    #2b75d6,
-    #ffd479,
-    #ff6fb3,
-    #84d6ff
-  );
-  filter: blur(14px);
-  opacity: 0.85;
-  z-index: -2;
-  animation: gallery-cta-spin 6s linear infinite;
 }
 
 .gallery-cta-shell::after {
@@ -525,12 +595,6 @@ textarea:focus-visible {
   }
 }
 
-@keyframes gallery-cta-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes gallery-cta-pulse {
   0%, 100% {
     opacity: 0.55;
@@ -572,7 +636,6 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gallery-cta-shell::before,
   .gallery-cta-shell::after,
   .gallery-cta-button::after,
   .gallery-cta-icon-wrap,

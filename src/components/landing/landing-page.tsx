@@ -262,17 +262,22 @@ export function LandingPage({
                   משחק קהילתי חי לערב יום העצמאות
                 </div>
 
-                <div className="space-y-4">
-                  <p className="text-xs uppercase tracking-[0.36em] text-[var(--text-dim)] sm:text-sm">
+                <div className="space-y-5">
+                  <span className="hero-eyebrow">
+                    <span className="hero-eyebrow-dot" aria-hidden="true" />
                     מושב כוכב מיכאל
-                  </p>
-                  <h1 className="max-w-4xl font-display text-5xl leading-[0.9] text-white sm:text-7xl xl:text-[5.6rem]">
+                    <span className="hero-eyebrow-dot" aria-hidden="true" />
+                  </span>
+                  <h1 className="hero-festive-title max-w-4xl">
                     כוכבניק
                   </h1>
-                  <p className="max-w-2xl text-lg leading-8 text-[var(--text-soft)] sm:text-xl">
+                  <div className="hero-festive-divider max-w-md" aria-hidden="true">
+                    ✦
+                  </div>
+                  <p className="hero-festive-lede max-w-2xl">
                     {data.settings.introText}
                   </p>
-                  <p className="max-w-2xl text-sm leading-7 text-[var(--text-dim)] sm:text-base">
+                  <p className="hero-festive-sub max-w-2xl">
                     עונים על שאלות קצרות, מצלמים רגעים מהאירוע, ובסוף מגלים איך כל
                     הקהילה בחרה וחוותה את הערב.
                   </p>
