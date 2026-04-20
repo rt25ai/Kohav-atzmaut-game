@@ -283,30 +283,33 @@ export function LandingPage({
                   </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="metric-plate px-5 py-5">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
-                      משתתפים
-                    </p>
-                    <p className="mt-3 font-display text-4xl text-white">
-                      <AnimatedCounter value={data.totalParticipants} />
-                    </p>
+                <div className="hero-stat-stars">
+                  <div className="hero-stat-star" data-stat-tone="participants">
+                    <span className="hero-stat-star-shape" aria-hidden="true" />
+                    <div className="hero-stat-star-content">
+                      <p className="hero-stat-star-value">
+                        <AnimatedCounter value={data.totalParticipants} />
+                      </p>
+                      <p className="hero-stat-star-label">משתתפים</p>
+                    </div>
                   </div>
-                  <div className="metric-plate px-5 py-5">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
-                      פעילים עכשיו
-                    </p>
-                    <p className="mt-3 font-display text-4xl text-white">
-                      <AnimatedCounter value={data.activePlayersNow} />
-                    </p>
+                  <div className="hero-stat-star" data-stat-tone="active">
+                    <span className="hero-stat-star-shape" aria-hidden="true" />
+                    <div className="hero-stat-star-content">
+                      <p className="hero-stat-star-value">
+                        <AnimatedCounter value={data.activePlayersNow} />
+                      </p>
+                      <p className="hero-stat-star-label">פעילים עכשיו</p>
+                    </div>
                   </div>
-                  <div className="metric-plate px-5 py-5">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-dim)]">
-                      רגעים בגלריה
-                    </p>
-                    <p className="mt-3 font-display text-4xl text-white">
-                      <AnimatedCounter value={galleryData.photos.length} />
-                    </p>
+                  <div className="hero-stat-star" data-stat-tone="gallery">
+                    <span className="hero-stat-star-shape" aria-hidden="true" />
+                    <div className="hero-stat-star-content">
+                      <p className="hero-stat-star-value">
+                        <AnimatedCounter value={galleryData.photos.length} />
+                      </p>
+                      <p className="hero-stat-star-label">רגעים בגלריה</p>
+                    </div>
                   </div>
                 </div>
 
