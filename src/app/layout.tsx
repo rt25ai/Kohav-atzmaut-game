@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Rubik, Secular_One } from "next/font/google";
 
 import { AppShell } from "@/components/shared/app-shell";
+import { PwaSupport } from "@/components/shared/pwa-support";
 import { SoundProvider } from "@/components/shared/sound-provider";
 import { APP_NAME, APP_SHORT_NAME, DEFAULT_PUBLIC_URL } from "@/lib/config";
 
@@ -21,8 +22,9 @@ const secularOne = Secular_One({
 const APP_DESCRIPTION =
   "סקר קהילתי חי, חגיגי ומונפש ליום העצמאות של כוכב מיכאל.";
 const META_IMAGE_PATH = "/branding/site-meta.png";
-const ICON_IMAGE_PATH = "/branding/site-icon.png";
-const APPLE_ICON_PATH = "/branding/site-apple.png";
+const ICON_192_PATH = "/icons/kochav-icon-192.png";
+const ICON_512_PATH = "/icons/kochav-icon-512.png";
+const APPLE_ICON_PATH = "/icons/kochav-apple-180.png";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,10 +39,19 @@ export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: APP_SHORT_NAME,
   description: APP_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: APP_SHORT_NAME,
+    statusBarStyle: "black-translucent",
+  },
   icons: {
-    icon: [{ url: ICON_IMAGE_PATH, type: "image/png" }],
-    shortcut: [{ url: ICON_IMAGE_PATH, type: "image/png" }],
-    apple: [{ url: APPLE_ICON_PATH, type: "image/png" }],
+    icon: [
+      { url: ICON_192_PATH, sizes: "192x192", type: "image/png" },
+      { url: ICON_512_PATH, sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: [{ url: ICON_512_PATH, type: "image/png" }],
+    apple: [{ url: APPLE_ICON_PATH, sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     title: APP_SHORT_NAME,
@@ -83,6 +94,7 @@ export default function RootLayout({
         </a>
         <SoundProvider>
           <AppShell>{children}</AppShell>
+          <PwaSupport />
         </SoundProvider>
       </body>
     </html>

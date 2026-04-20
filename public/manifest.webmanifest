@@ -1,0 +1,34 @@
+{
+  "name": "כוכבניק - כוכב של עצמאות",
+  "short_name": "כוכבניק",
+  "description": "סקר קהילתי חי, חגיגי ומונפש ליום העצמאות של כוכב מיכאל.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#041224",
+  "theme_color": "#041224",
+  "lang": "he",
+  "dir": "rtl",
+  "categories": ["entertainment", "social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/kochav-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/kochav-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/kochav-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
