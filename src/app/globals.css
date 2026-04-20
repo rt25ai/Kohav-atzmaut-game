@@ -906,3 +906,107 @@ textarea:focus-visible {
     animation: none;
   }
 }
+
+/* ── Site Footer Credit ──────────────────────────────────── */
+.footer-credit-panel {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(8, 22, 44, 0.88) 0%, rgba(4, 12, 28, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(100, 180, 255, 0.05) inset,
+    0 2px 28px rgba(0, 0, 0, 0.32);
+}
+
+.footer-credit-panel::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 180px;
+  background: radial-gradient(ellipse, rgba(74, 176, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.footer-logo-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 22px rgba(74, 176, 255, 0.28),
+    0 5px 18px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.footer-brand-name {
+  font-family: var(--font-display, "Heebo"), system-ui, sans-serif;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  background: linear-gradient(110deg, #ffe19b 0%, #80d4ff 52%, #c0a8ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.footer-brand-sub {
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  letter-spacing: 0.04em;
+}
+
+.footer-divider {
+  width: 100%;
+  max-width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+}
+
+.footer-social-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.footer-social-pill:hover {
+  transform: translateY(-2px);
+}
+
+.footer-social-pill--web:hover {
+  border-color: rgba(80, 180, 255, 0.38);
+  box-shadow: 0 4px 18px rgba(80, 180, 255, 0.18);
+  color: #80d4ff;
+}
+
+.footer-social-pill--insta:hover {
+  border-color: rgba(255, 140, 100, 0.38);
+  box-shadow: 0 4px 18px rgba(255, 120, 160, 0.16);
+  color: #ffb8a0;
+}
+
+.footer-follow-cta {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0.025em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-social-pill {
+    transition: none;
+  }
+}
