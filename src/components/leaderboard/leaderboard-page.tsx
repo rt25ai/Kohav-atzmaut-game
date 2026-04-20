@@ -29,7 +29,7 @@ export function LeaderboardPage({
   const currentPlayerId = getStoredPlayerId();
   const { data } = useLiveJson("/api/public/leaderboard", {
     initialData: { leaderboard: initialLeaderboard },
-    tables: ["players"],
+    tables: ["player_answers"],
   });
 
   const filtered = useMemo(() => {

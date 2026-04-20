@@ -77,10 +77,7 @@ export function ResultsPage() {
   const publicLive = useLiveJson<LivePublicSnapshot>("/api/public/snapshot", {
     initialData: EMPTY_PUBLIC_SNAPSHOT,
     tables: [
-      "players",
       "player_answers",
-      "game_events",
-      "admin_settings",
       "survey_runtime_state",
     ],
   });

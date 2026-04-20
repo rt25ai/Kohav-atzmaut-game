@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -17,6 +18,8 @@ type UseLiveJsonOptions<T> = {
   tables?: string[];
   disabled?: boolean;
 };
+
+const REALTIME_REFRESH_DEBOUNCE_MS = 600;
 
 export function useLiveJson<T>(
   url: string,
@@ -32,15 +35,28 @@ export function useLiveJson<T>(
     [instanceId, url],
   );
 
+  const inFlightRef = useRef<AbortController | null>(null);
+  const pendingRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (disabled) {
       return;
     }
 
+    if (inFlightRef.current) {
+      pendingRef.current = true;
+      return;
+    }
+
+    const controller = new AbortController();
+    inFlightRef.current = controller;
     startTransition(() => setLoading(true));
 
     try {
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) {
         throw new Error("network");
       }
@@ -50,10 +66,18 @@ export function useLiveJson<T>(
         setData(json);
         setError(null);
       });
-    } catch {
+    } catch (caught) {
+      if ((caught as { name?: string })?.name === "AbortError") {
+        return;
+      }
       setError("טעינת נתונים נכשלה");
     } finally {
+      inFlightRef.current = null;
       setLoading(false);
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        void refresh();
+      }
     }
   }, [disabled, url]);
 
@@ -63,8 +87,13 @@ export function useLiveJson<T>(
     }
 
     refresh();
-    const interval = window.setInterval(refresh, SNAPSHOT_POLL_MS);
-    return () => window.clearInterval(interval);
+    const jitter = Math.floor(Math.random() * 4000);
+    const interval = window.setInterval(refresh, SNAPSHOT_POLL_MS + jitter);
+    return () => {
+      window.clearInterval(interval);
+      inFlightRef.current?.abort();
+      inFlightRef.current = null;
+    };
   }, [disabled, refresh, url]);
 
   useEffect(() => {
@@ -78,20 +107,32 @@ export function useLiveJson<T>(
     }
 
     const channel = client.channel(channelName);
+    let debounceTimer: number | null = null;
+
+    const scheduleRefresh = () => {
+      if (debounceTimer !== null) {
+        return;
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        refresh();
+      }, REALTIME_REFRESH_DEBOUNCE_MS);
+    };
 
     stableTables.forEach((table) => {
       channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table },
-        () => {
-          refresh();
-        },
+        scheduleRefresh,
       );
     });
 
     channel.subscribe();
 
     return () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
       void client.removeChannel(channel);
     };
   }, [channelName, disabled, refresh, stableTables]);

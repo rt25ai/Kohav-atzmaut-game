@@ -7,8 +7,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const snapshot = await repository.getPublicSnapshot();
-  return NextResponse.json({
-    ...snapshot,
-    mode: IS_SUPABASE_ENABLED ? "supabase" : "local",
-  });
+  return NextResponse.json(
+    {
+      ...snapshot,
+      mode: IS_SUPABASE_ENABLED ? "supabase" : "local",
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "public, max-age=0, s-maxage=5, stale-while-revalidate=30",
+      },
+    },
+  );
 }

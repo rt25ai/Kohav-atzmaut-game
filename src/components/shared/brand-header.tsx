@@ -55,9 +55,6 @@ export function BrandHeader() {
       finalSurveySnapshot: null,
     },
     tables: [
-      "players",
-      "game_events",
-      "photo_uploads",
       "admin_settings",
       "host_announcements",
       "survey_runtime_state",

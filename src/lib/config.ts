@@ -5,9 +5,9 @@ export const STORAGE_SESSION_SNAPSHOT_KEY = "kochav-michael-active-session";
 export const STORAGE_SOUND_KEY = "kochav-michael-sound-enabled";
 export const STORAGE_PENDING_UPLOADS_KEY = "kochav-michael-pending-uploads";
 
-export const HEARTBEAT_INTERVAL_MS = 20_000;
-export const ACTIVE_PLAYER_WINDOW_MS = 90_000;
-export const SNAPSHOT_POLL_MS = 12_000;
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+export const ACTIVE_PLAYER_WINDOW_MS = 120_000;
+export const SNAPSHOT_POLL_MS = 25_000;
 
 export const ADMIN_ROUTE_SEGMENT =
   process.env.ADMIN_ROUTE_SEGMENT || "admin-secret-route";

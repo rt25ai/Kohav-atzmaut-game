@@ -82,7 +82,7 @@ export function LandingPage({
 
   const { data } = useLiveJson("/api/public/snapshot", {
     initialData: initialSnapshot,
-    tables: ["players", "game_events", "photo_uploads", "admin_settings"],
+    tables: ["game_events", "photo_uploads"],
   });
   const { data: galleryData } = useLiveJson("/api/public/gallery", {
     initialData: { photos: initialGallery },
