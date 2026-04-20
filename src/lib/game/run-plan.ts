@@ -41,13 +41,23 @@ export function buildRunSteps(
       : null;
 
   questionOrder.forEach((questionId, index) => {
+    const isLastQuestion = index === questionOrder.length - 1;
+    const isMissionSlot = (index + 1) % 3 === 0;
+    const missionIdForSlot = isMissionSlot
+      ? standardMissionIds[(index + 1) / 3 - 1]
+      : undefined;
+
+    // If the last question would normally get a mission after it AND a final mission
+    // follows, pre-insert the standard mission BEFORE the last question so there are
+    // never two missions back-to-back.
+    if (isLastQuestion && missionIdForSlot && finalMissionId) {
+      steps.push({ kind: "mission", missionId: missionIdForSlot });
+    }
+
     steps.push({ kind: "question", questionId });
 
-    if ((index + 1) % 3 === 0 && standardMissionIds[(index + 1) / 3 - 1]) {
-      steps.push({
-        kind: "mission",
-        missionId: standardMissionIds[(index + 1) / 3 - 1],
-      });
+    if (missionIdForSlot && !(isLastQuestion && finalMissionId)) {
+      steps.push({ kind: "mission", missionId: missionIdForSlot });
     }
   });
 
