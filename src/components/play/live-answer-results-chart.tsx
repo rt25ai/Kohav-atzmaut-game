@@ -7,38 +7,49 @@ import type { SurveyQuestionResult } from "@/lib/types";
 
 type LiveAnswerResultsChartProps = {
   questionResult: SurveyQuestionResult;
+  variant?: "live" | "summary";
 };
 
 export function LiveAnswerResultsChart({
   questionResult,
+  variant = "live",
 }: LiveAnswerResultsChartProps) {
+  const isSummary = variant === "summary";
+  const kickerLabel = isSummary ? "תוצאות הקהילה" : "תמונת מצב חיה";
+  const noteCopy = isSummary
+    ? "אלה האחוזים בקהילה לשאלה הזו. הבחירה שלך מסומנת."
+    : "הבחירה נקלטה. אלה האחוזים כרגע, לא התוצאה הסופית.";
+  const chipCopy = isSummary ? "תוצאות סופיות" : "מתעדכן בזמן אמת";
+  const totalCopy = isSummary
+    ? `${questionResult.totalAnswered} ענו בסך הכל`
+    : `${questionResult.totalAnswered} ענו עד עכשיו`;
+
   return (
     <section
       data-live-answer-results
+      data-results-variant={variant}
       className="mt-6 rounded-[30px] border border-[#9de0ff]/18 bg-[linear-gradient(180deg,rgba(7,29,52,0.94),rgba(5,19,35,0.92))] p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="section-kicker">
             <Radio size={14} />
-            תמונת מצב חיה
+            {kickerLabel}
           </div>
           <p
             data-live-answer-results-note
             className="mt-3 text-sm leading-7 text-[#d7f4ff]"
           >
-            הבחירה נקלטה. אלה האחוזים כרגע, לא התוצאה הסופית.
+            {noteCopy}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="broadcast-chip">
             <Sparkles size={14} />
-            מתעדכן בזמן אמת
+            {chipCopy}
           </span>
-          <span className="broadcast-chip">
-            {questionResult.totalAnswered} ענו עד עכשיו
-          </span>
+          <span className="broadcast-chip">{totalCopy}</span>
         </div>
       </div>
 

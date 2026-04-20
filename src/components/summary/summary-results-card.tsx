@@ -1,6 +1,6 @@
 import type { SurveyQuestionResult } from "@/lib/types";
 
-import { SummarySingleBarChart } from "@/components/summary/summary-single-bar-chart";
+import { LiveAnswerResultsChart } from "@/components/play/live-answer-results-chart";
 
 const COMPARISON_COPY: Record<
   SurveyQuestionResult["playerComparison"],
@@ -48,19 +48,12 @@ export function SummaryResultsCard({
       </h3>
 
       {playerChoice ? (
-        <div className="mt-5 space-y-4">
-          <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-            <p className="text-sm text-[var(--text-dim)]">הבחירה שלך</p>
-            <p className="mt-2 text-xl text-white">{playerChoice.label}</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-soft)]">
-              {COMPARISON_COPY[result.playerComparison]}
-            </p>
-          </div>
-
-          <SummarySingleBarChart
-            answerLabel={playerChoice.label}
-            percentage={playerChoice.percentage}
-          />
+        <div className="mt-5 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+          <p className="text-sm text-[var(--text-dim)]">הבחירה שלך</p>
+          <p className="mt-2 text-xl text-white">{playerChoice.label}</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-soft)]">
+            {COMPARISON_COPY[result.playerComparison]}
+          </p>
         </div>
       ) : (
         <div
@@ -70,6 +63,8 @@ export function SummaryResultsCard({
           {COMPARISON_COPY.skipped}
         </div>
       )}
+
+      <LiveAnswerResultsChart questionResult={result} variant="summary" />
     </article>
   );
 }
