@@ -147,6 +147,48 @@ textarea:focus-visible {
   color: #0f254a;
 }
 
+.admin-h-rail {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.65rem;
+  scroll-padding-inline: 1rem;
+  overscroll-behavior-x: contain;
+}
+
+.admin-h-rail::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-h-rail::-webkit-scrollbar-thumb {
+  background: rgba(15, 97, 216, 0.25);
+  border-radius: 999px;
+}
+
+.admin-h-rail-item {
+  flex: 0 0 calc(100% - 1.5rem);
+  max-width: calc(100% - 1.5rem);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+@media (min-width: 640px) {
+  .admin-h-rail-item {
+    flex-basis: 26rem;
+    max-width: 26rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-h-rail-item {
+    flex-basis: 30rem;
+    max-width: 30rem;
+  }
+}
+
 .admin-input {
   background: #ffffff;
   border: 1px solid rgba(15, 97, 216, 0.22);

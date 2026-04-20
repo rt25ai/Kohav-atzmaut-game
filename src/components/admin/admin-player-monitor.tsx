@@ -65,15 +65,18 @@ export function AdminPlayerMonitor({ players }: AdminPlayerMonitorProps) {
         </div>
       </div>
 
+      <p className="mt-3 text-xs text-[#5d7ca3] sm:hidden">
+        ← החליקו ימינה ושמאלה לעבור בין המשתתפים
+      </p>
       <div
-        className="mt-5 space-y-3"
+        className="admin-h-rail mt-5"
         data-admin-player-monitor-rail
       >
         {players.map((player) => (
           <article
             key={player.playerId}
             data-admin-player-monitor-row
-            className="admin-card min-w-0 rounded-[26px] p-4"
+            className="admin-card admin-h-rail-item rounded-[26px] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

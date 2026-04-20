@@ -30,15 +30,18 @@ export function AdminLiveSurveyDashboard({
         </div>
       </div>
 
+      <p className="mt-3 text-xs text-[#5d7ca3] sm:hidden">
+        ← החליקו ימינה ושמאלה לעבור בין השאלות
+      </p>
       <div
-        className="mt-5 space-y-4"
+        className="admin-h-rail mt-5"
         data-admin-results-rail
       >
         {overview.questions.map((question) => (
           <article
             key={question.questionId}
             data-admin-live-question-card
-            className="admin-card min-w-0 rounded-[28px] p-5"
+            className="admin-card admin-h-rail-item rounded-[28px] p-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

@@ -10,10 +10,11 @@ import {
   LoaderCircle,
   QrCode,
   RotateCcw,
+  Search,
   Trash2,
 } from "lucide-react";
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AdminLiveSurveyDashboard } from "@/components/admin/admin-live-survey-dashboard";
 import { AdminPlayerMonitor } from "@/components/admin/admin-player-monitor";
@@ -202,6 +203,7 @@ export function AdminConsole({
   const [surveySuccess, setSurveySuccess] = useState<string | null>(null);
   const [surveyConfirmAction, setSurveyConfirmAction] =
     useState<SurveyRuntimeAction | null>(null);
+  const [photoQuery, setPhotoQuery] = useState("");
   const live = useLiveJson<{ snapshot: AdminSnapshot }>("/api/admin/snapshot", {
     initialData: { snapshot: initialSnapshot ?? EMPTY_ADMIN_SNAPSHOT },
     tables: [
@@ -449,6 +451,15 @@ export function AdminConsole({
       : surveyConfirmAction === "reopen-live-survey"
         ? "כן, להחזיר למצב חי"
         : "";
+  const filteredPhotos = useMemo(() => {
+    const value = photoQuery.trim().toLocaleLowerCase("he");
+    if (!value) {
+      return snapshot.photos;
+    }
+    return snapshot.photos.filter((photo) =>
+      (photo.playerName ?? "").toLocaleLowerCase("he").includes(value),
+    );
+  }, [photoQuery, snapshot.photos]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -521,7 +532,7 @@ export function AdminConsole({
         ))}
       </section>
       <section
-        className="admin-panel order-3 rounded-[34px] p-5 sm:p-6"
+        className="admin-panel order-5 rounded-[34px] p-5 sm:p-6"
         data-admin-survey-control-section
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -591,91 +602,67 @@ export function AdminConsole({
         </div>
       </section>
       <section
-        className="order-4 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]"
+        className="admin-panel order-4 rounded-[34px] p-5 sm:p-6"
         data-admin-tools-section
       >
-        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
-          <p className="text-[0.95rem] text-[#5d7ca3]">כלים מהירים</p>
-          <h2 className="mt-2 font-display text-2xl text-[#0f254a]">
-            שליטה קומפקטית למסך קטן
-          </h2>
-          <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
-            השארנו כאן רק פעולות שבאמת שימושיות בזמן אמת בטלפון: צליל גלובלי,
-            פתיחת המשחק למשתתפים ו־QR מוכן לשיתוף.
-          </p>
+        <p className="text-[0.95rem] text-[#5d7ca3]">כלים מהירים</p>
+        <h2 className="mt-2 font-display text-2xl text-[#0f254a]">
+          שליטה קומפקטית למסך קטן
+        </h2>
+        <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+          השארנו כאן רק פעולות שבאמת שימושיות בזמן אמת בטלפון: צליל גלובלי
+          וקיצורי דרך לפעולות חיות.
+        </p>
 
-          <div className="mt-5 space-y-4">
-            <label className="flex items-center justify-between rounded-[24px] bg-[#f3f8ff] px-4 py-4">
-              <div className="min-w-0">
-                <span className="block text-base font-medium text-[#143764]">
-                  צליל גלובלי
-                </span>
-                <span className="mt-1 block text-[0.92rem] leading-6 text-[#5d7ca3] sm:text-sm">
-                  שליטה מיידית על סאונד המשתתפים
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={snapshot.settings.globalSoundEnabled}
-                onChange={(event) => {
-                  void updateSettings({
-                    globalSoundEnabled: event.target.checked,
-                  });
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="flex items-center justify-between rounded-[24px] bg-[#f3f8ff] px-4 py-4">
+            <div className="min-w-0">
+              <span className="block text-base font-medium text-[#143764]">
+                צליל גלובלי
+              </span>
+              <span className="mt-1 block text-[0.92rem] leading-6 text-[#5d7ca3] sm:text-sm">
+                שליטה מיידית על סאונד המשתתפים
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={snapshot.settings.globalSoundEnabled}
+              onChange={(event) => {
+                void updateSettings({
+                  globalSoundEnabled: event.target.checked,
+                });
+              }}
+            />
+          </label>
+
+          <div className="rounded-[24px] bg-[#f3f8ff] p-4">
+            <p className="text-base font-medium text-[#143764]">פעולות מהירות</p>
+            <div className="mt-3 grid gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.assign("/api/admin/export");
                 }}
-              />
-            </label>
-
-            <div className="rounded-[24px] bg-[#f3f8ff] p-4">
-              <p className="text-base font-medium text-[#143764]">כניסה מהירה למשחק</p>
-              <p className="mt-2 break-all text-[0.95rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
-                {publicUrl}
-              </p>
-              <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.open(publicUrl, "_blank", "noopener,noreferrer");
-                  }}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#0f61d8] px-4 text-base text-white sm:w-auto sm:text-sm"
-                >
-                  <FileDown size={16} />
-                  פתיחת המשחק
-                </button>
-                <a
-                  href={qrDataUrl}
-                  download="kochav-michael-qr.png"
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#cfe4ff] px-4 text-base text-[#43638b] sm:w-auto sm:text-sm"
-                >
-                  <Download size={16} />
-                  הורדת QR
-                </a>
-              </div>
+                className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0f61d8] px-4 text-base text-white sm:text-sm"
+              >
+                ייצוא CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.assign("/api/admin/photos-zip");
+                }}
+                className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#153968] px-4 text-base text-white sm:text-sm"
+              >
+                הורדת ZIP תמונות
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
-          <div className="flex flex-col gap-2 text-[#0f61d8] sm:flex-row sm:items-center">
-            <QrCode size={20} />
-            <p className="font-display text-xl">QR לכניסה למשחק</p>
-          </div>
-          <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
-            אפשר להציג מהמובייל או להוריד מיידית ולשתף למשתתפים.
-          </p>
-          {qrDataUrl ? (
-            <Image
-              src={qrDataUrl}
-              alt="QR"
-              width={280}
-              height={280}
-              className="mx-auto mt-5 w-full max-w-[15rem] rounded-[28px] bg-white p-4 sm:max-w-[17.5rem]"
-            />
-          ) : null}
         </div>
       </section>
 
       <section
-        className="admin-panel order-6 rounded-[34px] p-5 sm:p-6"
+        className="admin-panel order-3 rounded-[34px] p-5 sm:p-6"
         data-admin-host-section
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -969,17 +956,19 @@ export function AdminConsole({
         </div>
       </section>
 
-      <section className="order-5 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="order-6">
         <AdminLiveSurveyDashboard
           overview={snapshot.liveSurveyOverview}
           surveyPhase={snapshot.surveyPhase}
         />
+      </div>
+      <div className="order-7">
         <AdminPlayerMonitor players={snapshot.playerMonitor} />
-      </section>
+      </div>
 
 
       <section
-        className="admin-panel order-7 rounded-[34px] p-6"
+        className="admin-panel order-8 rounded-[34px] p-6"
         data-admin-gallery-section
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -991,15 +980,25 @@ export function AdminConsole({
             </p>
           </div>
           <div className="rounded-full bg-[#edf6ff] px-4 py-2 text-base text-[#0f61d8] sm:text-sm">
-            {snapshot.photos.length} תמונות במאגר
+            {filteredPhotos.length} מתוך {snapshot.photos.length} תמונות
           </div>
         </div>
+
+        <label className="mt-4 flex h-12 items-center gap-3 rounded-full bg-[#f3f8ff] px-4">
+          <Search size={18} className="text-[#5d7ca3]" />
+          <input
+            value={photoQuery}
+            onChange={(event) => setPhotoQuery(event.target.value)}
+            placeholder="חיפוש לפי שם משתתף..."
+            className="h-full w-full bg-transparent text-right text-[#143764] outline-none placeholder:text-[#7d9abf]"
+          />
+        </label>
 
         <div
           className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-4"
           data-admin-gallery-rail
         >
-          {snapshot.photos.map((photo) => (
+          {filteredPhotos.map((photo) => (
             <div
               key={photo.id}
               className="admin-card min-w-0 overflow-hidden rounded-[22px]"
@@ -1048,6 +1047,60 @@ export function AdminConsole({
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section
+        className="order-9 grid gap-6 lg:grid-cols-[1fr_0.9fr]"
+        data-admin-link-section
+      >
+        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
+          <p className="text-[0.95rem] text-[#5d7ca3]">כניסה למשחק</p>
+          <h2 className="mt-2 font-display text-2xl text-[#0f254a]">
+            הלינק למשתתפים
+          </h2>
+          <p className="mt-2 break-all rounded-[20px] bg-[#f3f8ff] px-4 py-3 text-[0.95rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+            {publicUrl}
+          </p>
+          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                window.open(publicUrl, "_blank", "noopener,noreferrer");
+              }}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#0f61d8] px-4 text-base text-white sm:w-auto sm:text-sm"
+            >
+              <FileDown size={16} />
+              פתיחת המשחק
+            </button>
+            <a
+              href={qrDataUrl}
+              download="kochav-michael-qr.png"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#cfe4ff] px-4 text-base text-[#43638b] sm:w-auto sm:text-sm"
+            >
+              <Download size={16} />
+              הורדת QR
+            </a>
+          </div>
+        </div>
+
+        <div className="admin-panel rounded-[34px] p-5 sm:p-6">
+          <div className="flex flex-col gap-2 text-[#0f61d8] sm:flex-row sm:items-center">
+            <QrCode size={20} />
+            <p className="font-display text-xl">QR לכניסה למשחק</p>
+          </div>
+          <p className="mt-2 text-[0.98rem] leading-7 text-[#5d7ca3] sm:text-sm sm:leading-6">
+            אפשר להציג מהמובייל או להוריד מיידית ולשתף למשתתפים.
+          </p>
+          {qrDataUrl ? (
+            <Image
+              src={qrDataUrl}
+              alt="QR"
+              width={280}
+              height={280}
+              className="mx-auto mt-5 w-full max-w-[15rem] rounded-[28px] bg-white p-4 sm:max-w-[17.5rem]"
+            />
+          ) : null}
         </div>
       </section>
 
