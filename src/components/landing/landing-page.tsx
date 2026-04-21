@@ -131,7 +131,6 @@ export function LandingPage({
         }
 
         if (storedSession.player.completed) {
-          router.replace("/summary");
           return;
         }
 

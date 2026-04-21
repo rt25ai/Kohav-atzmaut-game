@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, Sparkles, Users } from "lucide-react";
+import { Camera, Home, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 
@@ -159,6 +159,10 @@ export function SummaryPage() {
               הצגת התוצאות
             </button>
           ) : null}
+          <Link href="/?return=home" className="hero-button-secondary inline-flex items-center gap-2 rounded-full px-5 py-3">
+            <Home size={16} />
+            דף הבית
+          </Link>
           <button
             data-summary-new-game
             type="button"
