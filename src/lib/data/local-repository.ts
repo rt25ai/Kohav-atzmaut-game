@@ -257,7 +257,7 @@ function createPlayer(
     name: name.trim(),
     participantType,
     questionOrder: getOrderedQuestionIds(db.questions),
-    missionOrder: buildMissionOrder(db.missions),
+    missionOrder: [],
     currentStepIndex: 0,
     totalScore: 0,
     correctAnswers: 0,

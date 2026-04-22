@@ -835,7 +835,7 @@ export async function supabaseStartGame(input: StartGameInput) {
     name: input.name.trim(),
     participant_type: input.participantType,
     question_order: questionOrder(content.questions),
-    mission_order: missionOrder(content.missions),
+    mission_order: [],
     current_step_index: 0,
     total_score: 0,
     correct_answers: 0,
@@ -1907,7 +1907,7 @@ export async function supabaseResetPlayer(playerId: string) {
     .from("players")
     .update({
       question_order: questionOrder(content.questions),
-      mission_order: missionOrder(content.missions),
+      mission_order: [],
       current_step_index: 0,
       total_score: 0,
       correct_answers: 0,
