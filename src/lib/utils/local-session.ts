@@ -2,6 +2,7 @@
 
 import {
   STORAGE_PENDING_UPLOADS_KEY,
+  STORAGE_PHOTOGRAPHER_KEY,
   STORAGE_SESSION_KEY,
   STORAGE_SESSION_SNAPSHOT_KEY,
   STORAGE_SOUND_KEY,
@@ -109,4 +110,13 @@ export function setPendingUploads(items: PendingUpload[]) {
 export function clearPendingUploadsForPlayer(playerId: string) {
   const current = getPendingUploads();
   setPendingUploads(current.filter((item) => item.playerId !== playerId));
+}
+
+export function getStoredPhotographerId() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(STORAGE_PHOTOGRAPHER_KEY);
+}
+
+export function setStoredPhotographerId(id: string) {
+  window.localStorage.setItem(STORAGE_PHOTOGRAPHER_KEY, id);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Camera, LoaderCircle, Sparkles } from "lucide-react";
+import { Camera, Images, LoaderCircle, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { FestiveBurst } from "@/components/shared/festive-burst";
@@ -34,6 +34,7 @@ export function SummaryExtraPhotoForm() {
   const [cue, setCue] = useState<FestiveCue | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const deviceInputRef = useRef<HTMLInputElement | null>(null);
   const pickerScrollYRef = useRef<number | null>(null);
   const cueIterationRef = useRef(0);
 
@@ -133,9 +134,8 @@ export function SummaryExtraPhotoForm() {
         previewObjectUrlRef.current = null;
       }
 
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (deviceInputRef.current) deviceInputRef.current.value = "";
 
       play("upload");
     } catch (caughtError) {
@@ -187,26 +187,46 @@ export function SummaryExtraPhotoForm() {
         </div>
 
         <div className="space-y-4">
-          <label className="hero-button-secondary inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-[22px] px-5 text-white">
-            <Camera size={18} />
-            {selectedFile ? "החלפת תמונה" : "בחירת תמונה נוספת"}
-            <input
-              ref={fileInputRef}
-              data-summary-extra-file-input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onClick={() => {
-                pickerScrollYRef.current =
-                  typeof window === "undefined" ? 0 : window.scrollY;
-              }}
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                updatePreviewFromFile(file);
-              }}
-            />
-          </label>
+          <div className="flex gap-3">
+            <label className="hero-button-secondary inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[20px] px-4 py-3 text-white">
+              <Camera size={16} />
+              מצלמה
+              <input
+                ref={fileInputRef}
+                data-summary-extra-file-input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onPointerDown={() => {
+                  pickerScrollYRef.current =
+                    typeof window === "undefined" ? 0 : window.scrollY;
+                }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  updatePreviewFromFile(file);
+                }}
+              />
+            </label>
+            <label className="hero-button-secondary inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[20px] px-4 py-3 text-white">
+              <Images size={16} />
+              מהמכשיר
+              <input
+                ref={deviceInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onPointerDown={() => {
+                  pickerScrollYRef.current =
+                    typeof window === "undefined" ? 0 : window.scrollY;
+                }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  updatePreviewFromFile(file);
+                }}
+              />
+            </label>
+          </div>
 
           <textarea
             data-summary-extra-caption

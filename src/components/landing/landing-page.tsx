@@ -11,6 +11,7 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Lightbox } from "@/components/shared/lightbox";
 import { RelativeTimeText } from "@/components/shared/relative-time-text";
 import { useSound } from "@/components/shared/sound-provider";
+import { OpenPhotoUpload } from "@/components/landing/open-photo-upload";
 import { SummaryExtraPhotoForm } from "@/components/summary/summary-extra-photo-form";
 import { useLiveJson } from "@/hooks/use-live-json";
 import { HOME_HERO_IMAGE } from "@/lib/config";
@@ -523,6 +524,8 @@ export function LandingPage({
         </div>
       </section>
 
+      <OpenPhotoUpload />
+
       <section className="stage-panel rounded-[34px] p-6 sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -660,25 +663,6 @@ export function LandingPage({
           </div>
         )}
       </section>
-
-      {resumeSession?.player.completed ? (
-        <section className="stage-panel rounded-[34px] p-6 sm:p-8">
-          <div className="section-kicker">
-            <Camera size={15} />
-            המשך להעלות תמונות אווירה
-          </div>
-          <h2 className="mt-4 font-display text-3xl text-white sm:text-4xl">
-            סיימת את המשחק? אפשר עדיין להעלות עוד תמונות מהערב
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--text-soft)]">
-            גם מהמסך הראשי אפשר להוסיף רגעים נוספים לגלריה החיה. כל תמונה נכנסת
-            ישר לאלבום שלך.
-          </p>
-          <div className="mt-6">
-            <SummaryExtraPhotoForm />
-          </div>
-        </section>
-      ) : null}
 
       <Lightbox
         open={Boolean(selectedGroup)}

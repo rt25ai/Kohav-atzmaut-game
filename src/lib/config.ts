@@ -4,6 +4,7 @@ export const STORAGE_SESSION_KEY = "kochav-michael-active-player";
 export const STORAGE_SESSION_SNAPSHOT_KEY = "kochav-michael-active-session";
 export const STORAGE_SOUND_KEY = "kochav-michael-sound-enabled";
 export const STORAGE_PENDING_UPLOADS_KEY = "kochav-michael-pending-uploads";
+export const STORAGE_PHOTOGRAPHER_KEY = "kochav-michael-photographer";
 
 export const HEARTBEAT_INTERVAL_MS = 30_000;
 export const ACTIVE_PLAYER_WINDOW_MS = 120_000;
